@@ -5,7 +5,7 @@ Production-usable RESTful backend for the EduCore Multi-School Management ERP.
 ## Quick Start
 
 ```bash
-cd backend
+cd school-role-based-backend
 cp .env.example .env
 npm install
 npm run dev        # Starts API server on http://localhost:8787

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { Teacher } from '../models/index.js';
 import { createAuthUser, resolveOrgId } from '../utils/users.js';
+import { attachAvatarUrls } from '../utils/avatarMap.js';
 
 export async function getTeachers(req, res, next) {
   try {
@@ -17,7 +18,7 @@ export async function getTeachers(req, res, next) {
         organization_id: t.organization_id?._id?.toString?.() || json.organization_id,
       };
     });
-    return res.json(data);
+    return res.json(await attachAvatarUrls(data));
   } catch (err) {
     return next(err);
   }
@@ -42,11 +43,14 @@ export async function getTeacherById(req, res, next) {
     }
 
     const json = teacher.toJSON();
-    return res.json({
-      ...json,
-      organization: teacher.organization_id ? { name: teacher.organization_id.name } : null,
-      organization_id: teacher.organization_id?._id?.toString?.() || json.organization_id,
-    });
+    const [enriched] = await attachAvatarUrls([
+      {
+        ...json,
+        organization: teacher.organization_id ? { name: teacher.organization_id.name } : null,
+        organization_id: teacher.organization_id?._id?.toString?.() || json.organization_id,
+      },
+    ]);
+    return res.json(enriched);
   } catch (err) {
     return next(err);
   }
@@ -78,6 +82,7 @@ export async function createTeacher(req, res, next) {
       role: 'teacher',
       organization_id,
       phone: b.phone,
+      avatar_image: b.avatar_image,
     });
 
     const teacher = await Teacher.create({

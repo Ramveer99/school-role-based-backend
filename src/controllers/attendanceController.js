@@ -149,6 +149,43 @@ export async function markAttendance(req, res, next) {
   }
 }
 
+export async function updateAttendance(req, res, next) {
+  try {
+    if (!profileHasRole(req.profile, ['admin', 'super_admin', 'teacher'])) {
+      return res.status(403).json({ success: false, error: 'Forbidden: Teacher or Admin access required' });
+    }
+
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid attendance ID' });
+    }
+
+    const record = await Attendance.findOne({ _id: id, ...orgFilter(req.profile) });
+    if (!record) return res.status(404).json({ success: false, error: 'Attendance record not found' });
+
+    const b = req.body || {};
+    if (b.status !== undefined) record.status = b.status;
+    if (b.remarks !== undefined) record.remarks = b.remarks;
+    if (b.class_grade !== undefined) record.class_grade = String(b.class_grade);
+    if (b.section !== undefined) record.section = String(b.section);
+    if (b.date !== undefined) record.date = new Date(new Date(b.date).setHours(0, 0, 0, 0));
+    record.recorded_by = new mongoose.Types.ObjectId(req.profile.id);
+
+    await record.save();
+    await record.populate('student_id', 'full_name admission_no roll_no');
+
+    const json = record.toJSON();
+    return res.json({
+      ...json,
+      student_name: record.student_id?.full_name || null,
+      admission_no: record.student_id?.admission_no || null,
+      roll_no: record.student_id?.roll_no || null,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export async function getAttendanceStats(req, res, next) {
   try {
     const profile = req.profile;
@@ -206,5 +243,6 @@ export async function getAttendanceStats(req, res, next) {
 export default {
   getAttendance,
   markAttendance,
+  updateAttendance,
   getAttendanceStats,
 };

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { uploadMyAvatar } from '../controllers/profileController.js';
 
 const router = Router();
 
@@ -15,5 +16,7 @@ router.get('/', (req, res) => {
     phone: profile.phone,
   });
 });
+
+router.post('/avatar', uploadMyAvatar);
 
 export default router;

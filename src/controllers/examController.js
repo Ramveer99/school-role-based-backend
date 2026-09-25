@@ -30,6 +30,21 @@ export async function getExams(req, res, next) {
   }
 }
 
+export async function getExamById(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid exam ID' });
+    }
+
+    const exam = await Exam.findOne({ _id: id, ...orgFilter(req.profile) });
+    if (!exam) return res.status(404).json({ success: false, error: 'Exam not found' });
+    return res.json(exam.toJSON());
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export async function createExam(req, res, next) {
   try {
     if (!profileHasRole(req.profile, ['admin', 'super_admin', 'teacher'])) {
@@ -59,6 +74,63 @@ export async function createExam(req, res, next) {
     });
 
     return res.status(201).json(exam.toJSON());
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function updateExam(req, res, next) {
+  try {
+    if (!profileHasRole(req.profile, ['admin', 'super_admin', 'teacher'])) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    const id = req.params.id || req.body?.id;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Valid exam ID required' });
+    }
+
+    const b = req.body || {};
+    const updates = {};
+    if (b.title !== undefined) updates.title = b.title;
+    if (b.term !== undefined) updates.term = b.term;
+    if (b.class_grade !== undefined) updates.class_grade = String(b.class_grade);
+    if (b.subject !== undefined) updates.subject = b.subject;
+    if (b.date !== undefined) updates.date = new Date(b.date);
+    if (b.start_time !== undefined) updates.start_time = b.start_time;
+    if (b.duration !== undefined) updates.duration = b.duration;
+    if (b.total_marks !== undefined) updates.total_marks = Number(b.total_marks);
+    if (b.passing_marks !== undefined) updates.passing_marks = Number(b.passing_marks);
+
+    const exam = await Exam.findOneAndUpdate(
+      { _id: id, ...orgFilter(req.profile) },
+      updates,
+      { new: true }
+    );
+    if (!exam) return res.status(404).json({ success: false, error: 'Exam not found' });
+    return res.json(exam.toJSON());
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function deleteExam(req, res, next) {
+  try {
+    if (!profileHasRole(req.profile, ['admin', 'super_admin', 'teacher'])) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    const id = req.params.id || req.body?.id;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Valid exam ID required' });
+    }
+
+    const filter = { _id: id, ...orgFilter(req.profile) };
+    const deleted = await Exam.findOneAndDelete(filter);
+    if (!deleted) return res.status(404).json({ success: false, error: 'Exam not found' });
+
+    await Result.deleteMany({ exam_id: deleted._id });
+    return res.json({ ok: true, success: true, message: 'Exam deleted successfully' });
   } catch (err) {
     return next(err);
   }
@@ -168,7 +240,10 @@ export async function recordResult(req, res, next) {
 
 export default {
   getExams,
+  getExamById,
   createExam,
+  updateExam,
+  deleteExam,
   getResults,
   recordResult,
 };

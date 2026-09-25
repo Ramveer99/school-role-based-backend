@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { Parent, StudentParent } from '../models/index.js';
 import { createAuthUser, resolveOrgId } from '../utils/users.js';
+import { attachAvatarUrls } from '../utils/avatarMap.js';
 
 export async function getParents(req, res, next) {
   try {
@@ -35,7 +36,7 @@ export async function getParents(req, res, next) {
       };
     });
 
-    return res.json(data);
+    return res.json(await attachAvatarUrls(data));
   } catch (err) {
     return next(err);
   }
@@ -71,10 +72,13 @@ export async function getParentById(req, res, next) {
       'full_name class_grade section admission_no phone'
     );
 
-    return res.json({
-      ...parent.toJSON(),
-      children: childrenLinks.map((c) => (c.student_id ? c.student_id.toJSON() : null)).filter(Boolean),
-    });
+    const [enriched] = await attachAvatarUrls([
+      {
+        ...parent.toJSON(),
+        children: childrenLinks.map((c) => (c.student_id ? c.student_id.toJSON() : null)).filter(Boolean),
+      },
+    ]);
+    return res.json(enriched);
   } catch (err) {
     return next(err);
   }
@@ -107,6 +111,7 @@ export async function createParent(req, res, next) {
       role: 'parent',
       organization_id,
       phone: b.phone,
+      avatar_image: b.avatar_image,
     });
 
     const parent = await Parent.create({

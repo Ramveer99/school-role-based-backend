@@ -10,6 +10,7 @@ import {
   Fee,
   StudentParent,
 } from '../models/index.js';
+import { attachAvatarUrls } from '../utils/avatarMap.js';
 
 export async function getDashboardStats(req, res, next) {
   try {
@@ -46,7 +47,7 @@ export async function getDashboardStats(req, res, next) {
     const recentStudents = await Student.find(orgF)
       .sort({ created_at: -1 })
       .limit(5)
-      .select('full_name admission_no class_grade section created_at');
+      .select('full_name admission_no class_grade section created_at profile_id');
 
     const recentNotices = await Notice.find(orgF)
       .sort({ created_at: -1 })
@@ -105,7 +106,7 @@ export async function getDashboardStats(req, res, next) {
         collected: feesCollected,
         pending: feesPending,
       },
-      recent_admissions: recentStudents.map((s) => s.toJSON()),
+      recent_admissions: await attachAvatarUrls(recentStudents.map((s) => s.toJSON())),
       recent_notices: recentNotices.map((n) => n.toJSON()),
       role_specific: roleSpecific,
     });

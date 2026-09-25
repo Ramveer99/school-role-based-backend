@@ -120,6 +120,45 @@ describe('Priority 3 Academic, Fees, & Dashboard Integration Tests', () => {
       });
       assert.equal(parentForbidden.status, 403);
     });
+
+    it('Admin and Teacher can update attendance via PUT; Student and Parent cannot', async () => {
+      const createRes = await apiRequest('/attendance', {
+        method: 'POST',
+        token: ctx.teacherA.token,
+        body: {
+          student_id: ctx.studentA1Doc._id.toString(),
+          class_grade: '10',
+          section: 'A',
+          date: '2026-09-25',
+          status: 'present',
+        },
+      });
+      assert.equal(createRes.status, 201);
+      const recordId = createRes.body.record.id;
+
+      const updateRes = await apiRequest(`/attendance/${recordId}`, {
+        method: 'PUT',
+        token: ctx.adminA.token,
+        body: { status: 'late', remarks: 'Arrived late' },
+      });
+      assert.equal(updateRes.status, 200);
+      assert.equal(updateRes.body.status, 'late');
+      assert.equal(updateRes.body.remarks, 'Arrived late');
+
+      const studentAttempt = await apiRequest(`/attendance/${recordId}`, {
+        method: 'PUT',
+        token: ctx.studentA1.token,
+        body: { status: 'absent' },
+      });
+      assert.equal(studentAttempt.status, 403);
+
+      const parentAttempt = await apiRequest(`/attendance/${recordId}`, {
+        method: 'PUT',
+        token: ctx.parentA1.token,
+        body: { status: 'absent' },
+      });
+      assert.equal(parentAttempt.status, 403);
+    });
   });
 
   describe('Fees Workflow', () => {

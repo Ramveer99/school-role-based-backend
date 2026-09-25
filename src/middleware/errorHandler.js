@@ -1,7 +1,8 @@
 export function errorHandler(err, _req, res, _next) {
   console.error('[api]', err);
   const status = err.status || 500;
-  res.status(status).json({ error: err.message || 'Server error' });
+  const message = err.message || 'Server error';
+  res.status(status).json({ error: message });
 }
 
 export function notFound(_req, res) {

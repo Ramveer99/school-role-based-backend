@@ -138,6 +138,16 @@ Every school is represented as an **Organization**. All user interactions are sc
           status: { type: 'string', enum: ['present', 'absent', 'late', 'excused'] },
         },
       },
+      UpdateAttendanceRequest: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['present', 'absent', 'late', 'excused'], example: 'absent' },
+          remarks: { type: 'string', example: 'Sick leave' },
+          class_grade: { type: 'string', example: '10' },
+          section: { type: 'string', example: 'A' },
+          date: { type: 'string', format: 'date', example: '2026-09-24' },
+        },
+      },
       CreateFeeRequest: {
         type: 'object',
         required: ['student_id', 'title', 'total_amount', 'due_date'],
@@ -148,6 +158,18 @@ Every school is represented as an **Organization**. All user interactions are sc
           academic_year: { type: 'string', example: '2025-2026' },
           total_amount: { type: 'number', example: 45000 },
           due_date: { type: 'string', format: 'date', example: '2026-10-15' },
+        },
+      },
+      UpdateFeeRequest: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', example: 'Term 1 Tuition Fee' },
+          fee_type: { type: 'string', example: 'Tuition' },
+          academic_year: { type: 'string', example: '2025-2026' },
+          total_amount: { type: 'number', example: 45000 },
+          paid_amount: { type: 'number', example: 15000 },
+          due_date: { type: 'string', format: 'date', example: '2026-10-15' },
+          status: { type: 'string', enum: ['Paid', 'Pending', 'Overdue', 'Partial'] },
         },
       },
       PayFeeRequest: {
@@ -558,6 +580,19 @@ Complete multi-step admission flow:
         responses: { 200: { description: 'Attendance marked' }, 201: { description: 'Record created' } },
       },
     },
+    '/attendance/{id}': {
+      put: {
+        tags: ['Attendance'],
+        summary: 'Update attendance record (Admin or Teacher only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateAttendanceRequest' } } },
+        },
+        responses: { 200: { description: 'Attendance record updated' } },
+      },
+    },
     '/attendance/stats': {
       get: {
         tags: ['Attendance'],
@@ -591,6 +626,19 @@ Complete multi-step admission flow:
           content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateFeeRequest' } } },
         },
         responses: { 201: { description: 'Fee record created' } },
+      },
+    },
+    '/fees/{id}': {
+      put: {
+        tags: ['Fees'],
+        summary: 'Update fee invoice (Admin or Super Admin only)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateFeeRequest' } } },
+        },
+        responses: { 200: { description: 'Fee record updated' } },
       },
     },
     '/fees/{id}/pay': {
@@ -634,6 +682,52 @@ Complete multi-step admission flow:
           content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateExamRequest' } } },
         },
         responses: { 201: { description: 'Exam scheduled' } },
+      },
+      put: {
+        tags: ['Exams'],
+        summary: 'Update exam by ID in body (Admin, Teacher, or Super Admin)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/CreateExamRequest' }, { type: 'object', required: ['id'], properties: { id: { type: 'string' } } }] } } },
+        },
+        responses: { 200: { description: 'Exam updated' } },
+      },
+      delete: {
+        tags: ['Exams'],
+        summary: 'Delete exam by ID in body (Admin, Teacher, or Super Admin)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } } } },
+        },
+        responses: { 200: { description: 'Exam deleted' } },
+      },
+    },
+    '/exams/{id}': {
+      get: {
+        tags: ['Exams'],
+        summary: 'Get exam by ID',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Exam details' } },
+      },
+      put: {
+        tags: ['Exams'],
+        summary: 'Update exam (Admin, Teacher, or Super Admin)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateExamRequest' } } },
+        },
+        responses: { 200: { description: 'Exam updated' } },
+      },
+      delete: {
+        tags: ['Exams'],
+        summary: 'Delete exam (Admin, Teacher, or Super Admin)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Exam deleted' } },
       },
     },
     '/exams/results': {

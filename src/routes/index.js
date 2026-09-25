@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import auth from './auth.js';
 import me from './me.js';
+import profiles from './profiles.js';
 import organizations from './organizations.js';
 import teachers from './teachers.js';
 import students from './students.js';
@@ -27,6 +28,7 @@ router.use('/auth', auth);
 router.use(authenticateToken);
 
 router.use('/me', me);
+router.use('/profiles', profiles);
 router.use('/organizations', organizations);
 router.use('/teachers', teachers);
 router.use('/students', students);

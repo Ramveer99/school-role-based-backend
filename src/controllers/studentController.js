@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { Student, Parent, StudentParent, Teacher, ClassModel } from '../models/index.js';
+import { attachAvatarUrls } from '../utils/avatarMap.js';
 
 export async function getStudents(req, res, next) {
   try {
@@ -51,7 +52,7 @@ export async function getStudents(req, res, next) {
       };
     });
 
-    return res.json(data);
+    return res.json(await attachAvatarUrls(data));
   } catch (err) {
     return next(err);
   }
@@ -101,13 +102,17 @@ export async function getStudentById(req, res, next) {
     const parentLink = await StudentParent.findOne({ student_id: student._id }).populate('parent_id', 'full_name email phone');
     const json = student.toJSON();
 
-    return res.json({
-      ...json,
-      teacher_id: student.teacher_id?._id?.toString?.() || json.teacher_id,
-      teacher_name: student.teacher_id?.full_name || null,
-      parent: parentLink?.parent_id ? parentLink.parent_id.toJSON() : null,
-      parent_name: parentLink?.parent_id?.full_name || null,
-    });
+    const [enriched] = await attachAvatarUrls([
+      {
+        ...json,
+        teacher_id: student.teacher_id?._id?.toString?.() || json.teacher_id,
+        teacher_name: student.teacher_id?.full_name || null,
+        parent: parentLink?.parent_id ? parentLink.parent_id.toJSON() : null,
+        parent_name: parentLink?.parent_id?.full_name || null,
+      },
+    ]);
+
+    return res.json(enriched);
   } catch (err) {
     return next(err);
   }

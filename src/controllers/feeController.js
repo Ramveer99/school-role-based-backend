@@ -39,16 +39,7 @@ export async function getFees(req, res, next) {
       .populate('student_id', 'full_name admission_no class_grade section')
       .sort({ due_date: 1 });
 
-    const data = rows.map((f) => {
-      const json = f.toJSON();
-      return {
-        ...json,
-        student_name: f.student_id?.full_name || null,
-        admission_no: f.student_id?.admission_no || null,
-        class_grade: f.student_id?.class_grade || null,
-        section: f.student_id?.section || null,
-      };
-    });
+    const data = rows.map((f) => feeToResponse(f));
 
     return res.json(data);
   } catch (err) {
@@ -84,6 +75,55 @@ export async function createFee(req, res, next) {
     });
 
     return res.status(201).json(fee.toJSON());
+  } catch (err) {
+    return next(err);
+  }
+}
+
+function deriveFeeStatus(fee) {
+  if (fee.paid_amount >= fee.total_amount) return 'Paid';
+  if (fee.paid_amount > 0) return 'Partial';
+  return fee.due_date < new Date() ? 'Overdue' : 'Pending';
+}
+
+function feeToResponse(fee) {
+  const json = fee.toJSON();
+  return {
+    ...json,
+    student_name: fee.student_id?.full_name || null,
+    admission_no: fee.student_id?.admission_no || null,
+    class_grade: fee.student_id?.class_grade || null,
+    section: fee.student_id?.section || null,
+  };
+}
+
+export async function updateFee(req, res, next) {
+  try {
+    if (!profileHasRole(req.profile, ['admin', 'super_admin'])) {
+      return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
+    }
+
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid fee ID' });
+    }
+
+    const fee = await Fee.findOne({ _id: id, ...orgFilter(req.profile) });
+    if (!fee) return res.status(404).json({ success: false, error: 'Fee record not found' });
+
+    const b = req.body || {};
+    if (b.title !== undefined) fee.title = b.title;
+    if (b.fee_type !== undefined) fee.fee_type = b.fee_type;
+    if (b.academic_year !== undefined) fee.academic_year = b.academic_year;
+    if (b.total_amount !== undefined) fee.total_amount = Number(b.total_amount);
+    if (b.paid_amount !== undefined) fee.paid_amount = Number(b.paid_amount);
+    if (b.due_date !== undefined) fee.due_date = new Date(b.due_date);
+
+    fee.status = b.status !== undefined ? b.status : deriveFeeStatus(fee);
+
+    await fee.save();
+    await fee.populate('student_id', 'full_name admission_no class_grade section');
+    return res.json(feeToResponse(fee));
   } catch (err) {
     return next(err);
   }
@@ -179,6 +219,7 @@ export async function getFeeStats(req, res, next) {
 export default {
   getFees,
   createFee,
+  updateFee,
   payFee,
   getFeeStats,
 };

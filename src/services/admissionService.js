@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import { User, Profile, Student, Parent, ClassModel, StudentParent, Organization } from '../models/index.js';
 import { sendStudentCredentials, sendParentCredentials } from './emailService.js';
+import { saveAvatarFromBase64 } from '../utils/avatarStorage.js';
 
 function generateTemporaryPassword() {
   const randomHex = crypto.randomBytes(4).toString('hex');
@@ -129,6 +130,9 @@ export async function processStudentAdmission({
 
       let parentProfile = await Profile.findOne({ user_id: parentUser._id });
       if (!parentProfile) {
+        const parentAvatarUrl = parentData.avatar_image
+          ? saveAvatarFromBase64(parentData.avatar_image)
+          : null;
         parentProfile = await Profile.create({
           user_id: parentUser._id,
           email: parentEmail,
@@ -136,6 +140,7 @@ export async function processStudentAdmission({
           role: 'parent',
           organization_id,
           phone: parentData.phone?.trim() || null,
+          avatar_url: parentAvatarUrl,
         });
         created.parentProfileId = parentProfile._id;
       }
@@ -160,6 +165,9 @@ export async function processStudentAdmission({
     });
     created.studentUserId = studentUser._id;
 
+    const studentAvatarUrl = studentData.avatar_image
+      ? saveAvatarFromBase64(studentData.avatar_image)
+      : null;
     const studentProfile = await Profile.create({
       user_id: studentUser._id,
       email: studentEmail,
@@ -167,6 +175,7 @@ export async function processStudentAdmission({
       role: 'student',
       organization_id,
       phone: studentData.phone?.trim() || null,
+      avatar_url: studentAvatarUrl,
     });
     created.studentProfileId = studentProfile._id;
 
