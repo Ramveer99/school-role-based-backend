@@ -9,11 +9,6 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-if [[ ! -f dist/index.html ]]; then
-  echo "ERROR: dist/index.html missing. Build the frontend and copy it into ./dist first."
-  exit 1
-fi
-
 # Stop common static-only servers that break /api/* (return HTML instead of JSON).
 if command -v pm2 >/dev/null 2>&1; then
   pm2 delete serve 2>/dev/null || true
@@ -21,9 +16,8 @@ if command -v pm2 >/dev/null 2>&1; then
 fi
 
 export NODE_ENV=production
-export SERVE_STATIC=true
-export STATIC_DIR="${STATIC_DIR:-$ROOT/dist}"
+export PORT="${PORT:-8787}"
+export SERVE_STATIC="${SERVE_STATIC:-false}"
 
-echo "Starting EduCore API + frontend on PORT=${PORT:-8080}"
-echo "Static dir: $STATIC_DIR"
+echo "Starting EduCore API on PORT=$PORT (JSON only; frontend runs separately)"
 exec node src/server.js
