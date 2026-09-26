@@ -45,6 +45,7 @@ export function createApp() {
   if (env.serveStatic && env.nodeEnv !== 'test') {
     app.use(express.static(env.staticDir, { index: false }));
     app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();
       res.sendFile(path.join(env.staticDir, 'index.html'), (err) => {
         if (err) next(err);

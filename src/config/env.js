@@ -16,9 +16,15 @@ loadEnvFile(path.join(backendRoot, '.env'));
 loadEnvFile(path.join(projectRoot, '.env.local'));
 loadEnvFile(path.join(projectRoot, '.env'));
 
-const staticDir = process.env.STATIC_DIR
-  ? path.resolve(process.env.STATIC_DIR)
-  : path.join(projectRoot, 'dist');
+function resolveStaticDir() {
+  if (process.env.STATIC_DIR) return path.resolve(process.env.STATIC_DIR);
+  const bundledDist = path.join(backendRoot, 'dist');
+  const siblingDist = path.join(projectRoot, 'dist');
+  if (fs.existsSync(path.join(bundledDist, 'index.html'))) return bundledDist;
+  return siblingDist;
+}
+
+const staticDir = resolveStaticDir();
 
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',

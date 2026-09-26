@@ -11,6 +11,27 @@ npm install
 npm run dev        # Starts API server on http://localhost:8787
 ```
 
+## Production Deployment
+
+The `dist/` folder contains the built frontend. **Run the Express server** — do not use `npx serve dist` or another static-only server (that causes `/api/*` to return HTML instead of JSON).
+
+```bash
+# On your server (e.g. EC2)
+cp .env.example .env   # set MONGODB_URI, JWT_SECRET, PORT=8080
+npm install --omit=dev
+npm start              # or: pm2 start ecosystem.config.cjs
+```
+
+The API and frontend are served from the same origin. The frontend uses relative `/api/...` paths, so no `VITE_API_BASE_URL` is needed in production builds.
+
+To rebuild the frontend after UI changes (from the parent project):
+
+```bash
+cd ..
+VITE_API_BASE_URL= npm run build
+cp -r dist/* school-role-based-backend/dist/
+```
+
 ## API Documentation (Swagger)
 
 Interactive Swagger UI documentation is available directly in the browser:
