@@ -15,12 +15,14 @@ import {
   Exam,
   Result,
   Timetable,
+  Subject,
 } from './models/index.js';
 
 async function seed() {
   await connectDb();
 
   await Promise.all([
+    Subject.deleteMany({}),
     Attendance.deleteMany({}),
     Fee.deleteMany({}),
     Exam.deleteMany({}),
@@ -154,6 +156,7 @@ async function seed() {
       profile_id: studentProfile._id,
       admission_no: 'ADM-2024-001',
       full_name: 'Rahul Kumar',
+      email: 'rahul.k@greenwood.edu',
       roll_no: '12',
       class_grade: '10',
       section: 'A',
@@ -168,6 +171,7 @@ async function seed() {
       organization_id: greenwood._id,
       admission_no: 'ADM-2024-002',
       full_name: 'Priya Sharma',
+      email: 'priya.s@greenwood.edu',
       roll_no: '05',
       class_grade: '9',
       section: 'B',
@@ -181,6 +185,7 @@ async function seed() {
       organization_id: greenwood._id,
       admission_no: 'ADM-2024-003',
       full_name: 'Arjun Mehta',
+      email: 'arjun.m@greenwood.edu',
       roll_no: '18',
       class_grade: '8',
       section: 'A',
@@ -192,10 +197,75 @@ async function seed() {
     },
   ]);
 
-  await ClassModel.create([
-    { organization_id: greenwood._id, grade: '10', section: 'A', teacher_id: sarah._id },
-    { organization_id: greenwood._id, grade: '9', section: 'B', teacher_id: sarah._id },
-    { organization_id: greenwood._id, grade: '8', section: 'A', teacher_id: amit._id },
+  const [class10A, class9B, class8A] = await ClassModel.create([
+    {
+      organization_id: greenwood._id,
+      grade: '10',
+      section: 'A',
+      teacher_id: sarah._id,
+      teachers: [sarah._id, amit._id],
+    },
+    {
+      organization_id: greenwood._id,
+      grade: '9',
+      section: 'B',
+      teacher_id: sarah._id,
+      teachers: [sarah._id],
+    },
+    {
+      organization_id: greenwood._id,
+      grade: '8',
+      section: 'A',
+      teacher_id: amit._id,
+      teachers: [amit._id],
+    },
+  ]);
+
+  await Subject.create([
+    {
+      organization_id: greenwood._id,
+      name: 'Mathematics',
+      code: 'MATH-10',
+      class_grade: '10',
+      section: 'A',
+      class_id: class10A._id,
+      teacher_id: sarah._id,
+      teachers: [sarah._id],
+      description: 'Advanced Mathematics for Grade 10',
+    },
+    {
+      organization_id: greenwood._id,
+      name: 'Physics',
+      code: 'PHY-10',
+      class_grade: '10',
+      section: 'A',
+      class_id: class10A._id,
+      teacher_id: sarah._id,
+      teachers: [sarah._id],
+      description: 'Mechanics and Thermodynamics',
+    },
+    {
+      organization_id: greenwood._id,
+      name: 'English Literature',
+      code: 'ENG-10',
+      class_grade: '10',
+      section: 'A',
+      class_id: class10A._id,
+      teacher_id: amit._id,
+      teachers: [amit._id],
+      description: 'English Literature and Composition',
+    },
+    {
+      organization_id: greenwood._id,
+      name: 'History',
+      code: 'HIST-8',
+      class_grade: '8',
+      section: 'A',
+      class_id: class8A._id,
+      teacher_id: amit._id,
+      teachers: [amit._id],
+      description: 'World History and Civics',
+    },
   ]);
 
   await StudentParent.create({ student_id: rahul._id, parent_id: rajesh._id });

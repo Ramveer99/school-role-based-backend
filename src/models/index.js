@@ -12,3 +12,4 @@ export { Fee } from './Fee.js';
 export { Exam } from './Exam.js';
 export { Result } from './Result.js';
 export { Timetable } from './Timetable.js';
+export { Subject } from './Subject.js';

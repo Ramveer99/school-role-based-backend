@@ -185,6 +185,7 @@ export async function processStudentAdmission({
       profile_id: studentProfile._id,
       admission_no: admissionNo,
       full_name: studentData.full_name.trim(),
+      email: studentEmail,
       roll_no: studentData.roll_no?.trim() || null,
       class_grade: studentData.class_grade ? String(studentData.class_grade).trim() : '',
       section: studentData.section?.trim() || null,

@@ -9,7 +9,12 @@ export async function getStudents(req, res, next) {
     let filter = orgFilter(profile);
 
     if (profile.role === 'parent') {
-      const parent = await Parent.findOne({ profile_id: new mongoose.Types.ObjectId(profile.id) });
+      const parent = await Parent.findOne({
+        $or: [
+          { profile_id: new mongoose.Types.ObjectId(profile.id) },
+          { email: profile.email?.toLowerCase().trim() },
+        ],
+      });
       if (!parent) return res.json([]);
       const links = await StudentParent.find({ parent_id: parent._id }).select('student_id');
       const ids = links.map((l) => l.student_id);
@@ -20,7 +25,9 @@ export async function getStudents(req, res, next) {
       const teacher = await Teacher.findOne({ profile_id: new mongoose.Types.ObjectId(profile.id) });
       if (teacher) {
         // Teacher can see their assigned students or classes
-        const classes = await ClassModel.find({ teacher_id: teacher._id }).select('grade section');
+        const classes = await ClassModel.find({
+          $or: [{ teacher_id: teacher._id }, { teachers: teacher._id }],
+        }).select('grade section');
         if (classes.length) {
           const classConditions = classes.map((c) => ({ class_grade: c.grade, section: c.section }));
           filter = { ...filter, $or: [{ teacher_id: teacher._id }, ...classConditions] };
@@ -46,6 +53,8 @@ export async function getStudents(req, res, next) {
       const json = s.toJSON();
       return {
         ...json,
+        name: s.full_name,
+        class: s.class_grade ? (s.section ? `${s.class_grade}-${s.section}` : s.class_grade) : '',
         teacher_id: s.teacher_id?._id?.toString?.() || json.teacher_id,
         teacher_name: s.teacher_id?.full_name || null,
         parent_name: parentMap[s._id.toString()] || null,
@@ -89,7 +98,12 @@ export async function getStudentById(req, res, next) {
 
     // Resource-level security: Parent can only access linked children
     if (profile.role === 'parent') {
-      const parent = await Parent.findOne({ profile_id: new mongoose.Types.ObjectId(profile.id) });
+      const parent = await Parent.findOne({
+        $or: [
+          { profile_id: new mongoose.Types.ObjectId(profile.id) },
+          { email: profile.email?.toLowerCase().trim() },
+        ],
+      });
       if (!parent) {
         return res.status(403).json({ success: false, error: 'Forbidden: Parent profile not found' });
       }
@@ -105,6 +119,8 @@ export async function getStudentById(req, res, next) {
     const [enriched] = await attachAvatarUrls([
       {
         ...json,
+        name: student.full_name,
+        class: student.class_grade ? (student.section ? `${student.class_grade}-${student.section}` : student.class_grade) : '',
         teacher_id: student.teacher_id?._id?.toString?.() || json.teacher_id,
         teacher_name: student.teacher_id?.full_name || null,
         parent: parentLink?.parent_id ? parentLink.parent_id.toJSON() : null,
@@ -141,6 +157,7 @@ export async function createStudent(req, res, next) {
       organization_id: orgId,
       full_name: b.full_name,
       admission_no: b.admission_no,
+      email: b.email ? b.email.toLowerCase().trim() : null,
       roll_no: b.roll_no || null,
       class_grade: b.class_grade ? String(b.class_grade) : '',
       section: b.section || null,
@@ -171,6 +188,9 @@ export async function updateStudent(req, res, next) {
 
     const filter = { _id: id, ...orgFilter(req.profile) };
     const { id: _ignored, ...updateData } = req.body || {};
+    if (updateData.email) {
+      updateData.email = updateData.email.toLowerCase().trim();
+    }
 
     const student = await Student.findOneAndUpdate(filter, updateData, { new: true });
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });

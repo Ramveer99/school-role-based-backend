@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getParents,
+  getMyChildren,
   getParentById,
   createParent,
   updateParent,
@@ -9,6 +10,8 @@ import {
 
 const router = Router();
 
+router.get('/my-children', getMyChildren);
+router.get('/me/children', getMyChildren);
 router.get('/', getParents);
 router.get('/:id', getParentById);
 router.post('/', createParent);
