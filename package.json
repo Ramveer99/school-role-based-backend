@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "start:prod": "NODE_ENV=production node src/server.js",
+    "start:prod": "bash scripts/start-production.sh",
+    "check:server": "bash scripts/check-server.sh",
     "seed": "node src/seed.js",
     "migrate:supabase": "node scripts/migrateFromSupabase.js",
     "upgrade:legacy-auth": "node scripts/upgradeLegacyAuth.js",

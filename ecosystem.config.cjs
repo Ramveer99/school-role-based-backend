@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   apps: [
     {
@@ -9,6 +11,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 8080,
+        SERVE_STATIC: 'true',
+        STATIC_DIR: path.join(__dirname, 'dist'),
       },
     },
   ],

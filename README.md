@@ -11,18 +11,39 @@ npm install
 npm run dev        # Starts API server on http://localhost:8787
 ```
 
-## Production Deployment
+## Production Deployment (EC2 / VPS)
 
-The `dist/` folder contains the built frontend. **Run the Express server** — do not use `npx serve dist` or another static-only server (that causes `/api/*` to return HTML instead of JSON).
+**Problem:** If `curl http://YOUR_IP:8080/api/health` returns HTML, a static file server (`npx serve dist`) is running instead of Express. API calls will fail on live.
+
+**Fix — SSH into your server and run these commands:**
 
 ```bash
-# On your server (e.g. EC2)
-cp .env.example .env   # set MONGODB_URI, JWT_SECRET, PORT=8080
+# 1. Stop the static file server (this is what breaks /api/*)
+pm2 list                    # find process named "serve" or similar
+pm2 delete all              # or: pm2 delete serve
+pkill -f "serve dist"       # if not using pm2
+
+# 2. Deploy and start Express (API + frontend together)
+cd school-role-based-backend
+git pull
+cp .env.example .env        # edit: MONGODB_URI, JWT_SECRET, PORT=8080
 npm install --omit=dev
-npm start              # or: pm2 start ecosystem.config.cjs
+npm run start:prod          # starts Express on port 8080
+
+# OR with PM2 (keeps running after logout):
+pm2 start ecosystem.config.cjs
+pm2 save
 ```
 
-The API and frontend are served from the same origin. The frontend uses relative `/api/...` paths, so no `VITE_API_BASE_URL` is needed in production builds.
+**Verify it works:**
+
+```bash
+curl http://13.239.0.175:8080/api/health
+# Must return: {"ok":true,"service":"school-dashboard-api","db":"mongodb"}
+# NOT HTML!
+```
+
+The API and frontend are served from the same origin. The frontend uses relative `/api/...` paths.
 
 To rebuild the frontend after UI changes (from the parent project):
 
