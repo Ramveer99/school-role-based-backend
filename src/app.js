@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -27,18 +28,29 @@ export function createApp() {
   // Swagger Documentation
   setupSwagger(app);
 
-  app.get('/', (_req, res) => {
-    res.json({
-      name: 'EduCore School Dashboard API',
-      version: '1.0.0',
-      database: 'mongodb',
-      health: '/api/health',
-      docs: '/api/docs',
+  if (!env.serveStatic || env.nodeEnv === 'test') {
+    app.get('/', (_req, res) => {
+      res.json({
+        name: 'EduCore School Dashboard API',
+        version: '1.0.0',
+        database: 'mongodb',
+        health: '/api/health',
+        docs: '/api/docs',
+      });
     });
-  });
+  }
 
   app.use('/api', apiRoutes);
 
+  if (env.serveStatic && env.nodeEnv !== 'test') {
+    app.use(express.static(env.staticDir, { index: false }));
+    app.get('*', (req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      res.sendFile(path.join(env.staticDir, 'index.html'), (err) => {
+        if (err) next(err);
+      });
+    });
+  }
 
   app.use(notFound);
   app.use(errorHandler);
