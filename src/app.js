@@ -11,23 +11,33 @@ export function createApp() {
   const app = express();
 
 
-  const allowedOrigins = [
-    "http://localhost:8282",
-    "http://localhost:8080",
-  ];
+  // const allowedOrigins = [
+  //   "http://localhost:8282",
+  //   "http://localhost:8080",
+  // ];
   
+  // app.use(
+  //   cors({
+  //     origin: function (origin, callback) {
+  //       // Allow Postman, server-to-server requests, etc.
+  //       if (!origin) return callback(null, true);
+  
+  //       if (allowedOrigins.includes(origin)) {
+  //         return callback(null, true);
+  //       }
+  
+  //       return callback(new Error("Not allowed by CORS"));
+  //     },
+  //     credentials: true,
+  //   })
+  // );
+
   app.use(
     cors({
-      origin: function (origin, callback) {
-        // Allow Postman, server-to-server requests, etc.
-        if (!origin) return callback(null, true);
-  
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-  
-        return callback(new Error("Not allowed by CORS"));
-      },
+      origin: [
+        "http://localhost:8282",
+        "http://localhost:8080",
+      ],
       credentials: true,
     })
   );
