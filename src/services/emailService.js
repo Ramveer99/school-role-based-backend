@@ -12,6 +12,7 @@ function getTransporter() {
       host: env.smtp.host,
       port: env.smtp.port,
       secure: env.smtp.port === 465,
+      requireTLS: env.smtp.port === 587,
       auth: {
         user: env.smtp.user,
         pass: env.smtp.pass,
