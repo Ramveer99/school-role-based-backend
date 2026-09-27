@@ -42,6 +42,10 @@ export function createApp() {
     });
   });
 
+  app.get('/favicon.ico', (_req, res) => {
+    res.redirect(302, '/web/favicon.svg');
+  });
+
   app.use('/api', apiRoutes);
 
   app.use('/web', express.static(frontendPath));
