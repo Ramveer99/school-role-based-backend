@@ -87,11 +87,11 @@ export async function getMeFromProfileId(profileId) {
   };
 }
 
-export async function requestPasswordReset(email) {
+export async function issuePasswordResetForUser(email, { resetUrl } = {}) {
   const normalizedEmail = (email || '').toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
-    return { ok: true, message: 'If that email exists, a reset link was sent.' };
+    return { ok: false, message: 'User not found' };
   }
 
   const rawToken = crypto.randomBytes(32).toString('hex');
@@ -100,14 +100,31 @@ export async function requestPasswordReset(email) {
   user.password_reset_expires = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
 
-  // Send email asynchronously
-  await sendPasswordResetEmail({ email: user.email, resetToken: rawToken });
+  const resetLink = resetUrl
+    ? `${resetUrl}${resetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(rawToken)}${resetUrl.includes('email=') ? '' : `&email=${encodeURIComponent(normalizedEmail)}`}`
+    : `${process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app'}/login?resetToken=${rawToken}`;
+
+  await sendPasswordResetEmail({
+    email: user.email,
+    resetToken: rawToken,
+    resetUrl: resetLink,
+  });
 
   return {
     ok: true,
-    message: 'If that email exists, a reset link was sent.',
+    message: 'Password reset link sent.',
     resetToken: rawToken,
   };
+}
+
+export async function requestPasswordReset(email) {
+  const normalizedEmail = (email || '').toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail });
+  if (!user) {
+    return { ok: true, message: 'If that email exists, a reset link was sent.' };
+  }
+
+  return issuePasswordResetForUser(normalizedEmail);
 }
 
 export async function resetPasswordWithToken(token, newPassword) {

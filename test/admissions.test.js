@@ -209,6 +209,60 @@ describe('Student Admission Flow & Credential Tests', () => {
     assert.match(res.body.error, /already exists/i);
   });
 
+  test('POST /students - Student email and parent data create login account and parent link', async () => {
+    const adminToken = seedData.adminA.token;
+
+    const res = await apiRequest('/students', {
+      method: 'POST',
+      token: adminToken,
+      body: {
+        full_name: 'Riya Sen',
+        admission_no: 'ADM-2026-910',
+        email: 'riya.sen@schoolalpha.edu',
+        class_grade: '9',
+        section: 'C',
+        parent: {
+          full_name: 'Ranjan Sen',
+          email: 'ranjan.sen@example.com',
+          phone: '+91 90000 11111',
+        },
+      },
+    });
+
+    assert.equal(res.status, 201);
+    assert.ok(res.body.student);
+
+    const studentUser = await User.findOne({ email: 'riya.sen@schoolalpha.edu' }).select('+password');
+    assert.ok(studentUser, 'Student user account should be created for direct student creation');
+
+    const parentDoc = await Parent.findOne({ email: 'ranjan.sen@example.com' });
+    assert.ok(parentDoc, 'Parent record should be created when parent data is provided');
+
+    const studentDoc = await Student.findOne({ admission_no: 'ADM-2026-910' });
+    const link = await StudentParent.findOne({
+      student_id: studentDoc._id,
+      parent_id: parentDoc._id,
+    });
+    assert.ok(link, 'Student-parent link should be created');
+
+    const emails = getSentEmails();
+    const studentEmail = emails.find((e) => e.to === 'riya.sen@schoolalpha.edu');
+    assert.ok(studentEmail, 'Student reset email must be sent');
+    assert.match(studentEmail.subject, /Password Reset Request/i);
+    assert.match(studentEmail.html, /reset=true/i, 'Reset link should be present in the student email');
+    assert.match(studentEmail.html, /token=/i, 'Reset token should be present in the reset link');
+
+    const studentLogin = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: {
+        email: 'riya.sen@schoolalpha.edu',
+        password: 'wrong-password',
+      },
+    });
+
+    assert.equal(studentLogin.status, 401, 'Student should not be able to log in before completing the reset flow');
+  });
+
   test('POST /admissions - Non-admin cannot perform admission', async () => {
     const teacherToken = seedData.teacherA.token;
 
