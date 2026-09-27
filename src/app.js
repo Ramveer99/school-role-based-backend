@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -7,6 +8,9 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { env } from './config/env.js';
 import { setupSwagger } from './config/swagger.js';
 import { uploadsRoot } from './utils/avatarStorage.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendPath = path.resolve(__dirname, '..', 'dist', 'web');
 
 export function createApp() {
   const app = express();
@@ -28,41 +32,22 @@ export function createApp() {
   // Swagger Documentation
   setupSwagger(app);
 
-  if (!env.serveStatic || env.nodeEnv === 'test') {
-    app.get('/', (_req, res) => {
-      res.json({
-        name: 'EduCore School Dashboard API',
-        version: '1.0.0',
-        database: 'mongodb',
-        health: '/api/health',
-        docs: '/api/docs',
-      });
+  app.get('/', (_req, res) => {
+    res.json({
+      name: 'EduCore School Dashboard API',
+      version: '1.0.0',
+      database: 'mongodb',
+      health: '/api/health',
+      docs: '/api/docs',
     });
-  }
+  });
 
   app.use('/api', apiRoutes);
 
-  if (env.serveStatic && env.nodeEnv !== 'test') {
-    const base = env.staticBasePath;
-    const baseWithSlash = `${base}/`;
-
-    const sendIndex = (req, res, next) => {
-      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      res.sendFile(path.join(env.staticDir, 'index.html'), (err) => {
-        if (err) next(err);
-      });
-    };
-
-    app.use(base, express.static(env.staticDir, { index: 'index.html' }));
-    app.get(base, (_req, res) => res.redirect(301, baseWithSlash));
-    app.get(baseWithSlash, sendIndex);
-    app.get(`${base}/*`, (req, res, next) => {
-      const lastSegment = req.path.split('/').pop() || '';
-      if (path.extname(lastSegment)) return next();
-      sendIndex(req, res, next);
-    });
-    app.get('/', (_req, res) => res.redirect(302, baseWithSlash));
-  }
+  app.use('/web', express.static(frontendPath));
+  app.get('/web/*', (_req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
 
   app.use(notFound);
   app.use(errorHandler);

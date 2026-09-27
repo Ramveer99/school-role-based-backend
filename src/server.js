@@ -10,10 +10,6 @@ async function main() {
     console.log(`[backend] http://localhost:${env.port}`);
     console.log('[backend] MongoDB connected');
     console.log(`[backend] Health: http://localhost:${env.port}/api/health`);
-    if (env.serveStatic) {
-      console.log(`[backend] Frontend: http://localhost:${env.port}${env.staticBasePath}/`);
-      console.log(`[backend] Static files: ${env.staticDir}`);
-    }
   });
 }
 

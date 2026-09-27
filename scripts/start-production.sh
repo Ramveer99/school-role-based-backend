@@ -17,7 +17,6 @@ fi
 
 export NODE_ENV=production
 export PORT="${PORT:-8787}"
-export SERVE_STATIC="${SERVE_STATIC:-false}"
 
-echo "Starting EduCore API on PORT=$PORT (JSON only; frontend runs separately)"
+echo "Starting EduCore API on PORT=$PORT"
 exec node src/server.js

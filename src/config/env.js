@@ -16,22 +16,6 @@ loadEnvFile(path.join(backendRoot, '.env'));
 loadEnvFile(path.join(projectRoot, '.env.local'));
 loadEnvFile(path.join(projectRoot, '.env'));
 
-function resolveStaticDir() {
-  if (process.env.STATIC_DIR) return path.resolve(process.env.STATIC_DIR);
-  const candidates = [
-    path.join(backendRoot, 'dist', 'web'),
-    path.join(backendRoot, 'dist'),
-    path.join(projectRoot, 'dist', 'web'),
-    path.join(projectRoot, 'dist'),
-  ];
-  for (const dir of candidates) {
-    if (fs.existsSync(path.join(dir, 'index.html'))) return dir;
-  }
-  return path.join(projectRoot, 'dist', 'web');
-}
-
-const staticDir = resolveStaticDir();
-
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || process.env.API_PORT || 8787),
@@ -40,10 +24,6 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || true,
   frontendUrl: process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app',
-  staticDir,
-  staticBasePath: (process.env.STATIC_BASE_PATH || '/web').replace(/\/$/, '') || '/web',
-  // Opt-in only: dist/web may exist in the repo for deployment elsewhere, but API should not serve it by default.
-  serveStatic: process.env.SERVE_STATIC === 'true',
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: Number(process.env.SMTP_PORT || 587),
