@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -33,6 +34,10 @@ export function createApp() {
   setupSwagger(app);
 
   app.get('/', (_req, res) => {
+    if (fs.existsSync(path.join(frontendPath, 'index.html'))) {
+      return res.redirect(302, '/web/');
+    }
+
     res.json({
       name: 'EduCore School Dashboard API',
       version: '1.0.0',
