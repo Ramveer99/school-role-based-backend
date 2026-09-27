@@ -18,10 +18,16 @@ loadEnvFile(path.join(projectRoot, '.env'));
 
 function resolveStaticDir() {
   if (process.env.STATIC_DIR) return path.resolve(process.env.STATIC_DIR);
-  const bundledDist = path.join(backendRoot, 'dist');
-  const siblingDist = path.join(projectRoot, 'dist');
-  if (fs.existsSync(path.join(bundledDist, 'index.html'))) return bundledDist;
-  return siblingDist;
+  const candidates = [
+    path.join(backendRoot, 'dist', 'web'),
+    path.join(backendRoot, 'dist'),
+    path.join(projectRoot, 'dist', 'web'),
+    path.join(projectRoot, 'dist'),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'index.html'))) return dir;
+  }
+  return path.join(projectRoot, 'dist', 'web');
 }
 
 const staticDir = resolveStaticDir();
