@@ -16,16 +16,6 @@ loadEnvFile(path.join(backendRoot, '.env'));
 loadEnvFile(path.join(projectRoot, '.env.local'));
 loadEnvFile(path.join(projectRoot, '.env'));
 
-function resolveStaticDir() {
-  if (process.env.STATIC_DIR) return path.resolve(process.env.STATIC_DIR);
-  const bundledDist = path.join(backendRoot, 'dist');
-  const siblingDist = path.join(projectRoot, 'dist');
-  if (fs.existsSync(path.join(bundledDist, 'index.html'))) return bundledDist;
-  return siblingDist;
-}
-
-const staticDir = resolveStaticDir();
-
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || process.env.API_PORT || 8787),
@@ -34,10 +24,6 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || true,
   frontendUrl: process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app',
-  staticDir,
-  serveStatic:
-    process.env.SERVE_STATIC === 'true' ||
-    (process.env.SERVE_STATIC !== 'false' && fs.existsSync(path.join(staticDir, 'index.html'))),
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: Number(process.env.SMTP_PORT || 587),

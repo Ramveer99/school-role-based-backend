@@ -1,4 +1,3 @@
-import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -11,14 +10,46 @@ import { uploadsRoot } from './utils/avatarStorage.js';
 export function createApp() {
   const app = express();
 
+
+  // const allowedOrigins = [
+  //   "http://localhost:8282",
+  //   "http://localhost:8080",
+  // ];
+  
+  // app.use(
+  //   cors({
+  //     origin: function (origin, callback) {
+  //       // Allow Postman, server-to-server requests, etc.
+  //       if (!origin) return callback(null, true);
+  
+  //       if (allowedOrigins.includes(origin)) {
+  //         return callback(null, true);
+  //       }
+  
+  //       return callback(new Error("Not allowed by CORS"));
+  //     },
+  //     credentials: true,
+  //   })
+  // );
+
   app.use(
     cors({
-      origin: env.corsOrigin === 'true' || env.corsOrigin === true ? true : env.corsOrigin,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      origin: [
+        "http://13.239.0.175:8282",
+        "http://13.239.0.175:8080",
+      ],
       credentials: true,
     })
   );
+
+  // app.use(
+  //   cors({
+  //     origin: env.corsOrigin === 'true' || env.corsOrigin === true ? true : env.corsOrigin,
+  //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  //     allowedHeaders: ['Content-Type', 'Authorization'],
+  //     credentials: true,
+  //   })
+  // );
   app.use(express.json({ limit: '3mb' }));
   app.use('/uploads', express.static(uploadsRoot));
   if (env.nodeEnv !== 'test') {
@@ -28,30 +59,17 @@ export function createApp() {
   // Swagger Documentation
   setupSwagger(app);
 
-  if (!env.serveStatic || env.nodeEnv === 'test') {
-    app.get('/', (_req, res) => {
-      res.json({
-        name: 'EduCore School Dashboard API',
-        version: '1.0.0',
-        database: 'mongodb',
-        health: '/api/health',
-        docs: '/api/docs',
-      });
+  app.get('/', (_req, res) => {
+    res.json({
+      name: 'EduCore School Dashboard API',
+      version: '1.0.0',
+      database: 'mongodb',
+      health: '/api/health',
+      docs: '/api/docs',
     });
-  }
+  });
 
   app.use('/api', apiRoutes);
-
-  if (env.serveStatic && env.nodeEnv !== 'test') {
-    app.use(express.static(env.staticDir, { index: false }));
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
-      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      res.sendFile(path.join(env.staticDir, 'index.html'), (err) => {
-        if (err) next(err);
-      });
-    });
-  }
 
   app.use(notFound);
   app.use(errorHandler);
