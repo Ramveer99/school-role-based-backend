@@ -35,8 +35,8 @@ export function createApp() {
   app.use(
     cors({
       origin: [
-        "http://localhost:8282",
-        "http://localhost:8080",
+        "http://13.239.0.175:8282",
+        "http://13.239.0.175:8080",
       ],
       credentials: true,
     })
