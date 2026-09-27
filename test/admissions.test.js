@@ -247,20 +247,28 @@ describe('Student Admission Flow & Credential Tests', () => {
 
     const emails = getSentEmails();
     const studentEmail = emails.find((e) => e.to === 'riya.sen@schoolalpha.edu');
-    assert.ok(studentEmail, 'Student reset email must be sent');
-    assert.match(studentEmail.subject, /Password Reset Request/i);
-    assert.match(studentEmail.html, /reset=true/i, 'Reset link should be present in the student email');
-    assert.match(studentEmail.html, /token=/i, 'Reset token should be present in the reset link');
+    assert.ok(studentEmail, 'Student credentials email must be sent');
+    assert.match(studentEmail.subject, /Student Login Credentials/i);
+    assert.match(studentEmail.html, /Temporary Password:/i, 'Temporary password should be present in the student email');
+
+    const parentEmail = emails.find((e) => e.to === 'ranjan.sen@example.com');
+    assert.ok(parentEmail, 'Parent credentials email must be sent');
+    assert.match(parentEmail.subject, /Parent Portal Account/i);
+    assert.match(parentEmail.html, /Temporary Password:/i, 'Temporary password should be present in the parent email');
+
+    const studentTempPass = studentEmail.html.match(/Temporary Password:<\/strong>\s*<span[^>]*>([^<]+)<\/span>/)?.[1]?.trim();
+    assert.ok(studentTempPass, 'Temporary password should be extracted from the student credential email');
 
     const studentLogin = await apiRequest('/auth/login', {
       method: 'POST',
       body: {
         email: 'riya.sen@schoolalpha.edu',
-        password: 'wrong-password',
+        password: studentTempPass,
       },
     });
 
-    assert.equal(studentLogin.status, 401, 'Student should not be able to log in before completing the reset flow');
+    assert.equal(studentLogin.status, 200, 'Student should be able to log in with the admin-created default password');
+    assert.equal(studentLogin.body.user.role, 'student');
   });
 
   test('POST /admissions - Non-admin cannot perform admission', async () => {

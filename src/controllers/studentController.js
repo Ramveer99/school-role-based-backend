@@ -3,8 +3,7 @@ import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { User, Profile, Student, Parent, StudentParent, Teacher, ClassModel, Organization } from '../models/index.js';
 import { attachAvatarUrls } from '../utils/avatarMap.js';
-import { sendPasswordResetEmail } from '../services/emailService.js';
-import { issuePasswordResetForUser } from '../services/authService.js';
+import { sendStudentCredentials, sendParentCredentials } from '../services/emailService.js';
 
 function generateTemporaryPassword() {
   const randomHex = crypto.randomBytes(4).toString('hex');
@@ -265,10 +264,21 @@ export async function createStudent(req, res, next) {
       });
     }
 
-    await issuePasswordResetForUser(studentEmail, { resetUrl });
+    await sendStudentCredentials({
+      email: studentEmail,
+      fullName: b.full_name.trim(),
+      temporaryPassword: studentTempPassword,
+      schoolName,
+    });
 
     if (isParentCreated && parentEmail && parentFullName) {
-      await issuePasswordResetForUser(parentEmail, { resetUrl });
+      await sendParentCredentials({
+        email: parentEmail,
+        fullName: parentFullName,
+        studentName: b.full_name.trim(),
+        temporaryPassword: parentTempPassword,
+        schoolName,
+      });
     }
 
     return res.status(201).json({
@@ -276,7 +286,7 @@ export async function createStudent(req, res, next) {
       ok: true,
       student: student.toJSON(),
       parent_id: parentId ? parentId.toString() : null,
-      message: 'Student and parent accounts created. Password reset links have been sent to their emails.',
+      message: 'Student and parent accounts created. Login credentials have been sent to their emails.',
     });
   } catch (err) {
     return next(err);

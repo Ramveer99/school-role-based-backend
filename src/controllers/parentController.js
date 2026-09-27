@@ -4,7 +4,7 @@ import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { Parent, StudentParent, Student } from '../models/index.js';
 import { createAuthUser, resolveOrgId } from '../utils/users.js';
 import { attachAvatarUrls } from '../utils/avatarMap.js';
-import { issuePasswordResetForUser } from '../services/authService.js';
+import { sendParentCredentials } from '../services/emailService.js';
 
 function generateTemporaryPassword() {
   const randomHex = crypto.randomBytes(4).toString('hex');
@@ -215,14 +215,19 @@ export async function createParent(req, res, next) {
       address: b.address || null,
     });
 
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app'}/login?reset=true`;
-    await issuePasswordResetForUser(normalizedEmail, { resetUrl });
+    await sendParentCredentials({
+      email: normalizedEmail,
+      fullName: b.full_name,
+      studentName: 'Parent Portal',
+      temporaryPassword: tempPassword,
+      schoolName: 'EduCore School',
+    });
 
     return res.status(201).json({
       success: true,
       ok: true,
       parent: parent.toJSON(),
-      message: 'Parent account created. A password reset link has been sent to their email.',
+      message: 'Parent account created. Login credentials have been sent to their email.',
     });
   } catch (err) {
     return next(err);
