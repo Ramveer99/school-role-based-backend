@@ -102,7 +102,7 @@ export async function issuePasswordResetForUser(email, { resetUrl } = {}) {
 
   const resetLink = resetUrl
     ? `${resetUrl}${resetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(rawToken)}${resetUrl.includes('email=') ? '' : `&email=${encodeURIComponent(normalizedEmail)}`}`
-    : `${process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app'}/login?resetToken=${rawToken}`;
+    : `${process.env.FRONTEND_URL || 'https://13.239.0.175:8282/reset-password'}/login?resetToken=${rawToken}`;
 
   await sendPasswordResetEmail({
     email: user.email,
