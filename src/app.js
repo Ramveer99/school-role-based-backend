@@ -43,14 +43,25 @@ export function createApp() {
   app.use('/api', apiRoutes);
 
   if (env.serveStatic && env.nodeEnv !== 'test') {
-    app.use(express.static(env.staticDir, { index: false }));
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
+    const base = env.staticBasePath;
+    const baseWithSlash = `${base}/`;
+
+    const sendIndex = (req, res, next) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') return next();
       res.sendFile(path.join(env.staticDir, 'index.html'), (err) => {
         if (err) next(err);
       });
+    };
+
+    app.use(base, express.static(env.staticDir, { index: 'index.html' }));
+    app.get(base, (_req, res) => res.redirect(301, baseWithSlash));
+    app.get(baseWithSlash, sendIndex);
+    app.get(`${base}/*`, (req, res, next) => {
+      const lastSegment = req.path.split('/').pop() || '';
+      if (path.extname(lastSegment)) return next();
+      sendIndex(req, res, next);
     });
+    app.get('/', (_req, res) => res.redirect(302, baseWithSlash));
   }
 
   app.use(notFound);

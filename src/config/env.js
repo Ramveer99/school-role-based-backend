@@ -35,6 +35,7 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN || true,
   frontendUrl: process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app',
   staticDir,
+  staticBasePath: (process.env.STATIC_BASE_PATH || '/web').replace(/\/$/, '') || '/web',
   serveStatic:
     process.env.SERVE_STATIC === 'true' ||
     (process.env.SERVE_STATIC !== 'false' && fs.existsSync(path.join(staticDir, 'index.html'))),
