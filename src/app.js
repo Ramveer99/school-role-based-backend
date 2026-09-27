@@ -12,6 +12,15 @@ import { uploadsRoot } from './utils/avatarStorage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendPath = path.resolve(__dirname, '..', 'dist', 'web');
+const frontendIndex = path.join(frontendPath, 'index.html');
+const hasFrontend = fs.existsSync(frontendIndex);
+
+function sendFrontendIndex(req, res, next) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  res.sendFile(frontendIndex, (err) => {
+    if (err) next(err);
+  });
+}
 
 export function createApp() {
   const app = express();
@@ -34,7 +43,7 @@ export function createApp() {
   setupSwagger(app);
 
   app.get('/', (_req, res) => {
-    if (fs.existsSync(path.join(frontendPath, 'index.html'))) {
+    if (hasFrontend) {
       return res.redirect(302, '/web/');
     }
 
@@ -48,15 +57,24 @@ export function createApp() {
   });
 
   app.get('/favicon.ico', (_req, res) => {
-    res.redirect(302, '/web/favicon.svg');
+    if (hasFrontend) {
+      return res.redirect(302, '/web/favicon.svg');
+    }
+    res.status(404).end();
   });
 
   app.use('/api', apiRoutes);
 
-  app.use('/web', express.static(frontendPath));
-  app.get('/web/*', (_req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-  });
+  if (hasFrontend) {
+    app.use('/web', express.static(frontendPath, { index: 'index.html' }));
+    app.get('/web', (_req, res) => res.redirect(301, '/web/'));
+    app.get('/web/', sendFrontendIndex);
+    app.get('/web/*', (req, res, next) => {
+      const lastSegment = req.path.split('/').pop() || '';
+      if (path.extname(lastSegment)) return next();
+      sendFrontendIndex(req, res, next);
+    });
+  }
 
   app.use(notFound);
   app.use(errorHandler);
