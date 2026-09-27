@@ -12,6 +12,7 @@ const studentSchema = new mongoose.Schema(
     section: String,
     gender: String,
     dob: Date,
+    email: { type: String, lowercase: true, trim: true, default: null },
     phone: String,
     address: String,
     teacher_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', default: null },
@@ -22,6 +23,7 @@ const studentSchema = new mongoose.Schema(
 );
 
 studentSchema.index({ organization_id: 1, admission_no: 1 }, { unique: true });
+studentSchema.index({ organization_id: 1, email: 1 });
 applyIdTransform(studentSchema);
 
 export const Student = mongoose.model('Student', studentSchema);

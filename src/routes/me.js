@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { uploadMyAvatar } from '../controllers/profileController.js';
+import { getMyChildren } from '../controllers/parentController.js';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.get('/', (req, res) => {
   });
 });
 
+router.get('/children', getMyChildren);
 router.post('/avatar', uploadMyAvatar);
 
 export default router;

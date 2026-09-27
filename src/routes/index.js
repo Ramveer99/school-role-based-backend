@@ -16,6 +16,7 @@ import exams from './exams.js';
 import results from './results.js';
 import timetable from './timetable.js';
 import dashboard from './dashboard.js';
+import subjects from './subjects.js';
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.use('/teachers', teachers);
 router.use('/students', students);
 router.use('/parents', parents);
 router.use('/classes', classes);
+router.use('/subjects', subjects);
 router.use('/notices', notices);
 router.use('/admissions', admissions);
 router.use('/attendance', attendance);

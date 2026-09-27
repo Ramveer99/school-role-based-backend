@@ -71,19 +71,40 @@ export async function getDashboardStats(req, res, next) {
         };
       }
     } else if (profile.role === 'parent') {
-      const parent = await Parent.findOne({ profile_id: new mongoose.Types.ObjectId(profile.id) });
+      const parent = await Parent.findOne({
+        $or: [
+          { profile_id: new mongoose.Types.ObjectId(profile.id) },
+          { email: profile.email?.toLowerCase().trim() },
+        ],
+      });
       if (parent) {
         const links = await StudentParent.find({ parent_id: parent._id });
-        const children = await Student.find({ _id: { $in: links.map((l) => l.student_id) } });
+        const children = await Student.find({ _id: { $in: links.map((l) => l.student_id) } })
+          .populate('teacher_id', 'full_name');
+        
+        const rawChildren = children.map((c) => ({
+          id: c._id.toString(),
+          _id: c._id.toString(),
+          name: c.full_name,
+          full_name: c.full_name,
+          admission_no: c.admission_no,
+          class: c.class_grade ? (c.section ? `${c.class_grade}-${c.section}` : c.class_grade) : '',
+          class_grade: c.class_grade,
+          section: c.section,
+          phone: c.phone || '',
+          email: c.email || '',
+          roll_no: c.roll_no || '',
+          gender: c.gender || '',
+          dob: c.dob || null,
+          address: c.address || '',
+          status: c.status || 'Active',
+          teacher_name: c.teacher_id?.full_name || null,
+        }));
+
         roleSpecific = {
           parent_id: parent._id,
-          children_count: children.length,
-          children: children.map((c) => ({
-            id: c._id,
-            full_name: c.full_name,
-            class_grade: c.class_grade,
-            section: c.section,
-          })),
+          children_count: rawChildren.length,
+          children: await attachAvatarUrls(rawChildren),
         };
       }
     }

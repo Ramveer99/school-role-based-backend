@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
-import { Parent, StudentParent } from '../models/index.js';
+import { Parent, StudentParent, Student } from '../models/index.js';
 import { createAuthUser, resolveOrgId } from '../utils/users.js';
 import { attachAvatarUrls } from '../utils/avatarMap.js';
 
@@ -11,7 +11,13 @@ export async function getParents(req, res, next) {
 
     // Parent can only view own record
     if (profile.role === 'parent') {
-      filter = { ...filter, profile_id: new mongoose.Types.ObjectId(profile.id) };
+      filter = {
+        ...filter,
+        $or: [
+          { profile_id: new mongoose.Types.ObjectId(profile.id) },
+          { email: profile.email?.toLowerCase().trim() },
+        ],
+      };
     }
 
     const rows = await Parent.find(filter).sort({ created_at: -1 });
@@ -21,7 +27,7 @@ export async function getParents(req, res, next) {
     if (parentIds.length) {
       children = await StudentParent.find({ parent_id: { $in: parentIds } }).populate(
         'student_id',
-        'full_name class_grade section admission_no'
+        'full_name admission_no class_grade section phone email roll_no gender dob address status'
       );
     }
 
@@ -31,12 +37,88 @@ export async function getParents(req, res, next) {
         ...json,
         children: children
           .filter((c) => c.parent_id.toString() === p._id.toString())
-          .map((c) => (c.student_id ? c.student_id.toJSON() : null))
+          .map((c) => {
+            if (!c.student_id) return null;
+            const sJson = c.student_id.toJSON();
+            return {
+              ...sJson,
+              id: sJson.id || c.student_id._id.toString(),
+              name: c.student_id.full_name,
+              class: c.student_id.class_grade
+                ? (c.student_id.section ? `${c.student_id.class_grade}-${c.student_id.section}` : c.student_id.class_grade)
+                : '',
+            };
+          })
           .filter(Boolean),
       };
     });
 
     return res.json(await attachAvatarUrls(data));
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function getMyChildren(req, res, next) {
+  try {
+    const profile = req.profile;
+    if (profile.role !== 'parent' && profile.role !== 'admin' && profile.role !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Parent access required' });
+    }
+
+    let parent;
+    if (profile.role === 'parent') {
+      parent = await Parent.findOne({
+        $or: [
+          { profile_id: new mongoose.Types.ObjectId(profile.id) },
+          { email: profile.email?.toLowerCase().trim() },
+        ],
+      });
+    } else if (req.query.parent_id) {
+      parent = await Parent.findById(req.query.parent_id);
+    }
+
+    if (!parent) {
+      return res.json([]);
+    }
+
+    const links = await StudentParent.find({ parent_id: parent._id }).select('student_id');
+    const studentIds = links.map((l) => l.student_id);
+
+    if (!studentIds.length) {
+      return res.json([]);
+    }
+
+    const students = await Student.find({ _id: { $in: studentIds } })
+      .populate('teacher_id', 'full_name email phone')
+      .sort({ full_name: 1 });
+
+    const formatted = students.map((s) => {
+      const json = s.toJSON();
+      return {
+        ...json,
+        id: s._id.toString(),
+        name: s.full_name,
+        full_name: s.full_name,
+        admission_no: s.admission_no,
+        class: s.class_grade ? (s.section ? `${s.class_grade}-${s.section}` : s.class_grade) : '',
+        class_grade: s.class_grade || '',
+        grade: s.class_grade || '',
+        section: s.section || '',
+        phone: s.phone || '',
+        email: s.email || '',
+        roll_no: s.roll_no || '',
+        gender: s.gender || '',
+        dob: s.dob || null,
+        address: s.address || '',
+        status: s.status || 'Active',
+        teacher_id: s.teacher_id?._id?.toString?.() || json.teacher_id || null,
+        teacher_name: s.teacher_id?.full_name || null,
+      };
+    });
+
+    const enriched = await attachAvatarUrls(formatted);
+    return res.json(enriched);
   } catch (err) {
     return next(err);
   }
@@ -176,6 +258,7 @@ export async function deleteParent(req, res, next) {
 
 export default {
   getParents,
+  getMyChildren,
   getParentById,
   createParent,
   updateParent,
