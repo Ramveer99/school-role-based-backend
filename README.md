@@ -13,17 +13,7 @@ npm run dev        # Starts API server on http://localhost:8787
 
 ## Production Deployment (EC2 / VPS)
 
-**Problem:** If `curl http://YOUR_IP:8080/api/health` returns HTML, a static file server (`npx serve dist`) is running instead of Express. API calls will fail on live.
-
-**Fix — SSH into your server and run these commands:**
-
 ```bash
-# 1. Stop the static file server (this is what breaks /api/*)
-pm2 list                    # find process named "serve" or similar
-pm2 delete all              # or: pm2 delete serve
-pkill -f "serve dist"       # if not using pm2
-
-# 2. Deploy and start Express (API + frontend together)
 cd school-role-based-backend
 git pull
 cp .env.example .env        # edit: MONGODB_URI, JWT_SECRET, PORT=8080
@@ -38,19 +28,8 @@ pm2 save
 **Verify it works:**
 
 ```bash
-curl http://13.239.0.175:8080/api/health
+curl http://YOUR_IP:8080/api/health
 # Must return: {"ok":true,"service":"school-dashboard-api","db":"mongodb"}
-# NOT HTML!
-```
-
-The API and frontend are served from the same origin. The frontend uses relative `/api/...` paths.
-
-To rebuild the frontend after UI changes (from the parent project):
-
-```bash
-cd ..
-VITE_API_BASE_URL= npm run build
-cp -r dist/* school-role-based-backend/dist/
 ```
 
 ## API Documentation (Swagger)
