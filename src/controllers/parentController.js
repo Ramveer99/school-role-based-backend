@@ -1,8 +1,15 @@
+import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { Parent, StudentParent, Student } from '../models/index.js';
 import { createAuthUser, resolveOrgId } from '../utils/users.js';
 import { attachAvatarUrls } from '../utils/avatarMap.js';
+import { sendParentCredentials } from '../services/emailService.js';
+
+function generateTemporaryPassword() {
+  const randomHex = crypto.randomBytes(4).toString('hex');
+  return `Edu@${randomHex}9!`;
+}
 
 export async function getParents(req, res, next) {
   try {
@@ -180,15 +187,17 @@ export async function createParent(req, res, next) {
     const organization_id = resolveOrgId(req.profile, b.organization_id);
     if (!organization_id) return res.status(400).json({ success: false, error: 'organization_id required' });
 
+    const normalizedEmail = b.email.toLowerCase().trim();
     const existing = await Parent.findOne({
       organization_id,
-      email: b.email.toLowerCase().trim(),
+      email: normalizedEmail,
     });
     if (existing) return res.json(existing.toJSON());
 
+    const tempPassword = generateTemporaryPassword();
     const userId = await createAuthUser({
-      email: b.email,
-      password: b.password || 'EduCore@123!',
+      email: normalizedEmail,
+      password: tempPassword,
       full_name: b.full_name,
       role: 'parent',
       organization_id,
@@ -200,13 +209,26 @@ export async function createParent(req, res, next) {
       organization_id,
       profile_id: userId,
       full_name: b.full_name,
-      email: b.email.toLowerCase().trim(),
+      email: normalizedEmail,
       phone: b.phone || null,
       occupation: b.occupation || null,
       address: b.address || null,
     });
 
-    return res.status(201).json(parent.toJSON());
+    await sendParentCredentials({
+      email: normalizedEmail,
+      fullName: b.full_name,
+      studentName: 'Parent Portal',
+      temporaryPassword: tempPassword,
+      schoolName: 'EduCore School',
+    });
+
+    return res.status(201).json({
+      success: true,
+      ok: true,
+      parent: parent.toJSON(),
+      message: 'Parent account created. Login credentials have been sent to their email.',
+    });
   } catch (err) {
     return next(err);
   }

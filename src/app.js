@@ -42,14 +42,14 @@ export function createApp() {
     })
   );
 
-  // app.use(
-  //   cors({
-  //     origin: env.corsOrigin === 'true' || env.corsOrigin === true ? true : env.corsOrigin,
-  //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  //     allowedHeaders: ['Content-Type', 'Authorization'],
-  //     credentials: true,
-  //   })
-  // );
+  app.use(
+    cors({
+      origin: env.corsOrigin === 'true' || env.corsOrigin === true ? true : env.corsOrigin,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+    })
+  );
   app.use(express.json({ limit: '3mb' }));
   app.use('/uploads', express.static(uploadsRoot));
   if (env.nodeEnv !== 'test') {

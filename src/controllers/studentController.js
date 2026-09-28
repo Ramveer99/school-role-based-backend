@@ -1,7 +1,14 @@
+import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
-import { Student, Parent, StudentParent, Teacher, ClassModel } from '../models/index.js';
+import { User, Profile, Student, Parent, StudentParent, Teacher, ClassModel, Organization } from '../models/index.js';
 import { attachAvatarUrls } from '../utils/avatarMap.js';
+import { sendStudentCredentials, sendParentCredentials } from '../services/emailService.js';
+
+function generateTemporaryPassword() {
+  const randomHex = crypto.randomBytes(4).toString('hex');
+  return `Edu@${randomHex}9!`;
+}
 
 export async function getStudents(req, res, next) {
   try {
@@ -148,18 +155,99 @@ export async function createStudent(req, res, next) {
     const orgId = req.profile.role === 'super_admin' ? b.organization_id || req.profile.organization_id : req.profile.organization_id;
     if (!orgId) return res.status(400).json({ success: false, error: 'organization_id required' });
 
+    const studentEmail = b.email ? b.email.toLowerCase().trim() : null;
+    if (!studentEmail) {
+      return res.status(400).json({ success: false, error: 'student email is required for student login account' });
+    }
+
     const existing = await Student.findOne({ organization_id: orgId, admission_no: b.admission_no });
     if (existing) {
       return res.status(409).json({ success: false, error: 'Admission number already exists in this organization' });
     }
 
+    const existingStudentUser = await User.findOne({ email: studentEmail });
+    if (existingStudentUser) {
+      return res.status(409).json({ success: false, error: `User account with email "${studentEmail}" already exists` });
+    }
+
+    const orgDoc = await Organization.findById(orgId);
+    const schoolName = orgDoc?.name || 'EduCore School';
+    const studentTempPassword = generateTemporaryPassword();
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app'}/login?reset=true`;
+
+    let parentId = b.parent_id || null;
+    let parentEmail = null;
+    let parentFullName = null;
+    let parentPhone = null;
+    let isParentCreated = false;
+    let parentTempPassword = null;
+
+    if (b.parent) {
+      if (!b.parent.full_name?.trim() || !b.parent.email?.trim()) {
+        return res.status(400).json({ success: false, error: 'parent.full_name and parent.email are required' });
+      }
+
+      parentEmail = b.parent.email.toLowerCase().trim();
+      parentFullName = b.parent.full_name.trim();
+      parentPhone = b.parent.phone?.trim() || null;
+
+      const parentDoc = await Parent.findOne({ organization_id: orgId, email: parentEmail });
+      if (parentDoc) {
+        parentId = parentDoc._id;
+      } else {
+        parentTempPassword = generateTemporaryPassword();
+        const parentUser = await User.create({
+          email: parentEmail,
+          password: parentTempPassword,
+        });
+
+        const parentProfile = await Profile.create({
+          user_id: parentUser._id,
+          email: parentEmail,
+          full_name: parentFullName,
+          role: 'parent',
+          organization_id: orgId,
+          phone: parentPhone,
+        });
+
+        const newParent = await Parent.create({
+          organization_id: orgId,
+          profile_id: parentProfile._id,
+          full_name: parentFullName,
+          email: parentEmail,
+          phone: parentPhone,
+          occupation: b.parent.occupation?.trim() || null,
+          address: b.parent.address?.trim() || null,
+        });
+
+        parentId = newParent._id;
+        isParentCreated = true;
+      }
+    }
+
+    const studentUser = await User.create({
+      email: studentEmail,
+      password: studentTempPassword,
+    });
+
+    const studentProfile = await Profile.create({
+      user_id: studentUser._id,
+      email: studentEmail,
+      full_name: b.full_name.trim(),
+      role: 'student',
+      organization_id: orgId,
+      phone: b.phone?.trim() || null,
+    });
+
     const student = await Student.create({
       organization_id: orgId,
-      full_name: b.full_name,
+      profile_id: studentProfile._id,
+      full_name: b.full_name.trim(),
       admission_no: b.admission_no,
-      email: b.email ? b.email.toLowerCase().trim() : null,
+      email: studentEmail,
       roll_no: b.roll_no || null,
-      class_grade: b.class_grade ? String(b.class_grade) : '',
+      class_grade: b.class_grade ? String(b.class_grade).trim() : '',
       section: b.section || null,
       gender: b.gender || null,
       dob: b.dob ? new Date(b.dob) : null,
@@ -169,7 +257,37 @@ export async function createStudent(req, res, next) {
       status: b.status || 'Active',
     });
 
-    return res.status(201).json(student.toJSON());
+    if (parentId) {
+      await StudentParent.create({
+        student_id: student._id,
+        parent_id: parentId,
+      });
+    }
+
+    await sendStudentCredentials({
+      email: studentEmail,
+      fullName: b.full_name.trim(),
+      temporaryPassword: studentTempPassword,
+      schoolName,
+    });
+
+    if (isParentCreated && parentEmail && parentFullName) {
+      await sendParentCredentials({
+        email: parentEmail,
+        fullName: parentFullName,
+        studentName: b.full_name.trim(),
+        temporaryPassword: parentTempPassword,
+        schoolName,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      ok: true,
+      student: student.toJSON(),
+      parent_id: parentId ? parentId.toString() : null,
+      message: 'Student and parent accounts created. Login credentials have been sent to their emails.',
+    });
   } catch (err) {
     return next(err);
   }
