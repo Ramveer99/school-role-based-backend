@@ -37,6 +37,9 @@ export function createApp() {
       origin: [
         "http://13.239.0.175:8282",
         "http://13.239.0.175:8080",
+        "http://localhost:8787",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
       ],
       credentials: true,
     })

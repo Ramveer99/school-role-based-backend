@@ -8,6 +8,26 @@ import {
 } from '../services/authService.js';
 import { resolveOrgId } from '../utils/users.js';
 import { profileHasRole } from '../middleware/auth.js';
+import { env } from '../config/env.js';
+
+function resetPageFromRequest(req) {
+  const origin = req.get('origin');
+  const configured = String(env.frontendUrl || '').replace(/\/$/, '');
+  if (!origin) return `${configured}/reset-password`;
+
+  try {
+    const url = new URL(origin);
+    const configuredOrigin = configured ? new URL(configured).origin : '';
+    const localHosts = new Set(['localhost:5173', '127.0.0.1:5173', 'localhost:8282', '127.0.0.1:8282', '13.239.0.175:8282']);
+    if (url.origin === configuredOrigin || localHosts.has(url.host)) {
+      return `${url.origin}/reset-password`;
+    }
+  } catch {
+    // Ignore a malformed Origin and fall back to FRONTEND_URL.
+  }
+
+  return `${configured}/reset-password`;
+}
 
 export async function login(req, res, next) {
   try {
@@ -94,8 +114,11 @@ export async function forgotPassword(req, res, next) {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ success: false, error: 'email required' });
 
-    const result = await requestPasswordReset(email);
-    const payload = { ok: result.ok, success: true, message: result.message };
+    const result = await requestPasswordReset(email, { resetUrl: resetPageFromRequest(req) });
+    if (!result.ok) {
+      return res.status(result.status || 502).json({ success: false, error: result.message });
+    }
+    const payload = { ok: true, success: true, message: result.message };
     if (process.env.NODE_ENV !== 'production' && result.resetToken) {
       payload.resetToken = result.resetToken;
     }

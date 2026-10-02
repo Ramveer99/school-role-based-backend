@@ -8,11 +8,14 @@ export async function connectDb(customUri = null) {
   const targetUri = customUri || env.mongodbUri;
 
   try {
-    await mongoose.connect(targetUri, { serverSelectionTimeoutMS: 2500 });
+    const isLocal = /localhost|127\.0\.0\.1/.test(targetUri);
+    await mongoose.connect(targetUri, { serverSelectionTimeoutMS: isLocal ? 2500 : 15000 });
     const safeUri = targetUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
     console.log(`[backend] MongoDB connected: ${safeUri}`);
   } catch (err) {
+    const isLocal = /localhost|127\.0\.0\.1/.test(targetUri);
     if (
+      isLocal &&
       env.nodeEnv !== 'production' &&
       (err.name === 'MongooseServerSelectionError' || err.message?.includes('ECONNREFUSED'))
     ) {

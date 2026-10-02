@@ -1,7 +1,14 @@
 import crypto from 'node:crypto';
 import { User, Profile } from '../models/index.js';
 import { signToken } from '../middleware/auth.js';
+import { env } from '../config/env.js';
 import { sendPasswordResetEmail } from './emailService.js';
+
+function passwordResetPage(resetUrl) {
+  if (resetUrl) return resetUrl;
+  const base = String(env.frontendUrl || '').replace(/\/$/, '');
+  return `${base}/reset-password`;
+}
 
 export function publicUserPayload(profile) {
   return {
@@ -100,31 +107,34 @@ export async function issuePasswordResetForUser(email, { resetUrl } = {}) {
   user.password_reset_expires = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
 
-  const resetLink = resetUrl
-    ? `${resetUrl}${resetUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(rawToken)}${resetUrl.includes('email=') ? '' : `&email=${encodeURIComponent(normalizedEmail)}`}`
-    : `${process.env.FRONTEND_URL || 'https://13.239.0.175:8282/reset-password'}/login?resetToken=${rawToken}`;
+  const page = passwordResetPage(resetUrl);
+  const resetLink = `${page}${page.includes('?') ? '&' : '?'}token=${encodeURIComponent(rawToken)}`;
 
-  await sendPasswordResetEmail({
+  const sent = await sendPasswordResetEmail({
     email: user.email,
     resetToken: rawToken,
     resetUrl: resetLink,
   });
+  if (!sent.ok) {
+    return { ok: false, status: 502, message: 'Could not send the reset email. Please try again.' };
+  }
 
   return {
     ok: true,
-    message: 'Password reset link sent.',
+    message: `Password reset link sent to ${user.email}.`,
+    sentTo: user.email,
     resetToken: rawToken,
   };
 }
 
-export async function requestPasswordReset(email) {
+export async function requestPasswordReset(email, { resetUrl } = {}) {
   const normalizedEmail = (email || '').toLowerCase().trim();
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
     return { ok: true, message: 'If that email exists, a reset link was sent.' };
   }
 
-  return issuePasswordResetForUser(normalizedEmail);
+  return issuePasswordResetForUser(normalizedEmail, { resetUrl });
 }
 
 export async function resetPasswordWithToken(token, newPassword) {

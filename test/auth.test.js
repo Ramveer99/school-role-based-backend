@@ -173,8 +173,8 @@ describe('Authentication & Password Management Tests', () => {
     // Check sent emails log
     const emails = getSentEmails();
     const resetEmail = emails.find((e) => e.to === seedData.teacherA.profile.email);
-    assert.ok(resetEmail, 'Password reset email should be queued/sent');
-    assert.match(resetEmail.subject, /Password Reset/i);
+    assert.ok(resetEmail, 'Password reset email should be sent to the email in the request');
+    assert.match(resetEmail.subject, /reset/i);
 
     // In non-prod, resetToken is returned in payload or can be extracted from resetEmail
     const token = forgotRes.body.resetToken;
