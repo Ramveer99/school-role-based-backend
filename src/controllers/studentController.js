@@ -5,6 +5,49 @@ import { User, Profile, Student, Parent, StudentParent, Teacher, ClassModel, Org
 import { attachAvatarUrls } from '../utils/avatarMap.js';
 import { sendStudentCredentials, sendParentCredentials } from '../services/emailService.js';
 
+async function syncStudentAuthAccount(studentDoc, updates = {}) {
+  if (!studentDoc?.profile_id) return;
+
+  const profile = await Profile.findById(studentDoc.profile_id);
+  if (!profile) return;
+
+  const user = await User.findById(profile.user_id);
+  if (!user) return;
+
+  const nextEmail = typeof updates.email === 'string' ? updates.email.toLowerCase().trim() : null;
+  const nextFullName = typeof updates.full_name === 'string' ? updates.full_name.trim() : null;
+  const nextPhone = updates.phone !== undefined ? updates.phone || null : undefined;
+
+  if (nextEmail && nextEmail !== user.email) {
+    const existingUser = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
+    if (existingUser) {
+      const err = new Error('User account with this email already exists');
+      err.statusCode = 409;
+      throw err;
+    }
+    user.email = nextEmail;
+  }
+
+  if (updates.password) {
+    user.password = updates.password;
+  }
+
+  if (nextFullName) {
+    profile.full_name = nextFullName;
+  }
+
+  if (nextPhone !== undefined) {
+    profile.phone = nextPhone;
+  }
+
+  if (nextEmail) {
+    profile.email = nextEmail;
+  }
+
+  await user.save();
+  await profile.save();
+}
+
 function generateTemporaryPassword() {
   const randomHex = crypto.randomBytes(4).toString('hex');
   return `Edu@${randomHex}9!`;
@@ -305,15 +348,30 @@ export async function updateStudent(req, res, next) {
     }
 
     const filter = { _id: id, ...orgFilter(req.profile) };
-    const { id: _ignored, ...updateData } = req.body || {};
+    const { id: _ignored, password, ...updateData } = req.body || {};
     if (updateData.email) {
       updateData.email = updateData.email.toLowerCase().trim();
     }
+    if (updateData.full_name) {
+      updateData.full_name = updateData.full_name.trim();
+    }
+    if (updateData.phone !== undefined) {
+      updateData.phone = updateData.phone || null;
+    }
 
-    const student = await Student.findOneAndUpdate(filter, updateData, { new: true });
+    const student = await Student.findOne(filter);
     if (!student) return res.status(404).json({ success: false, error: 'Student not found' });
 
-    return res.json(student.toJSON());
+    try {
+      await syncStudentAuthAccount(student, { ...updateData, password });
+    } catch (err) {
+      return res.status(err.statusCode || 400).json({ success: false, error: err.message || 'Could not update student login account' });
+    }
+
+    const updated = await Student.findOneAndUpdate(filter, updateData, { new: true });
+    if (!updated) return res.status(404).json({ success: false, error: 'Student not found' });
+
+    return res.json(updated.toJSON());
   } catch (err) {
     return next(err);
   }

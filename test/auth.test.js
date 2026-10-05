@@ -52,6 +52,94 @@ describe('Authentication & Password Management Tests', () => {
     assert.equal(res.body.user.role, 'teacher');
   });
 
+  test('PUT /teachers/:id - Updating teacher email keeps login credentials valid', async () => {
+    const created = await apiRequest('/teachers', {
+      method: 'POST',
+      token: seedData.adminA.token,
+      body: {
+        full_name: 'Updated Teacher',
+        email: 'updated.teacher@schoolalpha.edu',
+        employee_id: 'EMP-UPDATE-001',
+        password: 'TeacherLogin@123',
+        organization_id: seedData.schoolA._id.toString(),
+      },
+    });
+
+    assert.equal(created.status, 201, `Teacher creation should succeed: ${JSON.stringify(created.body)}`);
+
+    const updated = await apiRequest(`/teachers/${created.body.id}`, {
+      method: 'PUT',
+      token: seedData.adminA.token,
+      body: {
+        full_name: 'Updated Teacher',
+        email: 'updated.teacher.new@schoolalpha.edu',
+        employee_id: 'EMP-UPDATE-001',
+        organization_id: seedData.schoolA._id.toString(),
+      },
+    });
+
+    assert.equal(updated.status, 200, `Teacher update should succeed: ${JSON.stringify(updated.body)}`);
+
+    const login = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: {
+        email: 'updated.teacher.new@schoolalpha.edu',
+        password: 'TeacherLogin@123',
+      },
+    });
+
+    assert.equal(login.status, 200);
+    assert.equal(login.body.user.role, 'teacher');
+  });
+
+  test('PUT /parents/:id and PUT /students/:id - Updating login email keeps auth valid', async () => {
+    const updatedParent = await apiRequest(`/parents/${seedData.parentA1Doc._id}`, {
+      method: 'PUT',
+      token: seedData.adminA.token,
+      body: {
+        full_name: 'Parent One',
+        email: 'parent.one.updated@schoolalpha.edu',
+        organization_id: seedData.schoolA._id.toString(),
+      },
+    });
+
+    assert.equal(updatedParent.status, 200, `Parent update should succeed: ${JSON.stringify(updatedParent.body)}`);
+
+    const parentLogin = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: {
+        email: 'parent.one.updated@schoolalpha.edu',
+        password: seedData.defaultPassword,
+      },
+    });
+
+    assert.equal(parentLogin.status, 200);
+    assert.equal(parentLogin.body.user.role, 'parent');
+
+    const updatedStudent = await apiRequest(`/students/${seedData.studentA1Doc._id}`, {
+      method: 'PUT',
+      token: seedData.adminA.token,
+      body: {
+        full_name: 'Student One',
+        email: 'student.one.updated@schoolalpha.edu',
+        organization_id: seedData.schoolA._id.toString(),
+      },
+    });
+
+    assert.equal(updatedStudent.status, 200, `Student update should succeed: ${JSON.stringify(updatedStudent.body)}`);
+
+    const studentLogin = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: {
+        email: 'student.one.updated@schoolalpha.edu',
+        password: seedData.defaultPassword,
+      },
+    });
+
+    assert.equal(studentLogin.status, 200);
+    assert.equal(studentLogin.body.user.role, 'student');
+  });
+
   test('POST /auth/login - Student login succeeds', async () => {
     const res = await apiRequest('/auth/login', {
       method: 'POST',

@@ -1,8 +1,51 @@
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
-import { Teacher } from '../models/index.js';
+import { User, Profile, Teacher } from '../models/index.js';
 import { createAuthUser, resolveOrgId } from '../utils/users.js';
 import { attachAvatarUrls } from '../utils/avatarMap.js';
+
+async function syncTeacherAuthAccount(teacherDoc, updates = {}) {
+  if (!teacherDoc?.profile_id) return;
+
+  const profile = await Profile.findById(teacherDoc.profile_id);
+  if (!profile) return;
+
+  const user = await User.findById(profile.user_id);
+  if (!user) return;
+
+  const nextEmail = typeof updates.email === 'string' ? updates.email.toLowerCase().trim() : null;
+  const nextFullName = typeof updates.full_name === 'string' ? updates.full_name.trim() : null;
+  const nextPhone = updates.phone !== undefined ? updates.phone || null : undefined;
+
+  if (nextEmail && nextEmail !== user.email) {
+    const existingUser = await User.findOne({ email: nextEmail, _id: { $ne: user._id } });
+    if (existingUser) {
+      const err = new Error('User account with this email already exists');
+      err.statusCode = 409;
+      throw err;
+    }
+    user.email = nextEmail;
+  }
+
+  if (updates.password) {
+    user.password = updates.password;
+  }
+
+  if (nextFullName) {
+    profile.full_name = nextFullName;
+  }
+
+  if (nextPhone !== undefined) {
+    profile.phone = nextPhone;
+  }
+
+  if (nextEmail) {
+    profile.email = nextEmail;
+  }
+
+  await user.save();
+  await profile.save();
+}
 
 export async function getTeachers(req, res, next) {
   try {
@@ -67,6 +110,12 @@ export async function createTeacher(req, res, next) {
       return res.status(400).json({ success: false, error: 'full_name, email, employee_id required' });
     }
 
+    const normalizedEmail = String(b.email).toLowerCase().trim();
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(409).json({ success: false, error: `User account with email "${normalizedEmail}" already exists` });
+    }
+
     const organization_id = resolveOrgId(req.profile, b.organization_id);
     if (!organization_id) return res.status(400).json({ success: false, error: 'organization_id required' });
 
@@ -117,10 +166,25 @@ export async function updateTeacher(req, res, next) {
     }
 
     const filter = { _id: id, ...orgFilter(req.profile) };
-    const { id: _ignored, ...rest } = req.body || {};
-    const teacher = await Teacher.findOneAndUpdate(filter, rest, { new: true });
+    const { id: _ignored, password, ...rest } = req.body || {};
+    const cleanRest = { ...rest };
+
+    if (cleanRest.email) cleanRest.email = String(cleanRest.email).toLowerCase().trim();
+    if (cleanRest.full_name) cleanRest.full_name = String(cleanRest.full_name).trim();
+    if (cleanRest.phone !== undefined) cleanRest.phone = cleanRest.phone || null;
+
+    const teacher = await Teacher.findOne(filter);
     if (!teacher) return res.status(404).json({ success: false, error: 'Teacher not found' });
-    return res.json(teacher.toJSON());
+
+    try {
+      await syncTeacherAuthAccount(teacher, { ...cleanRest, password });
+    } catch (err) {
+      return res.status(err.statusCode || 400).json({ success: false, error: err.message || 'Could not update teacher login account' });
+    }
+
+    const updated = await Teacher.findOneAndUpdate(filter, cleanRest, { new: true });
+    if (!updated) return res.status(404).json({ success: false, error: 'Teacher not found' });
+    return res.json(updated.toJSON());
   } catch (err) {
     return next(err);
   }
