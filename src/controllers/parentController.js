@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import { getDefaultPassword } from '../services/defaultPasswordService.js';
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { User, Profile, Parent, StudentParent, Student } from '../models/index.js';
@@ -47,11 +47,6 @@ async function syncParentAuthAccount(parentDoc, updates = {}) {
 
   await user.save();
   await profile.save();
-}
-
-function generateTemporaryPassword() {
-  const randomHex = crypto.randomBytes(4).toString('hex');
-  return `Edu@${randomHex}9!`;
 }
 
 export async function getParents(req, res, next) {
@@ -237,7 +232,7 @@ export async function createParent(req, res, next) {
     });
     if (existing) return res.json(existing.toJSON());
 
-    const tempPassword = generateTemporaryPassword();
+    const tempPassword = await getDefaultPassword(organization_id);
     const userId = await createAuthUser({
       email: normalizedEmail,
       password: tempPassword,

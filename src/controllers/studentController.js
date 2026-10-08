@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import { getDefaultPassword } from '../services/defaultPasswordService.js';
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { User, Profile, Student, Parent, StudentParent, Teacher, ClassModel, Organization } from '../models/index.js';
@@ -46,11 +46,6 @@ async function syncStudentAuthAccount(studentDoc, updates = {}) {
 
   await user.save();
   await profile.save();
-}
-
-function generateTemporaryPassword() {
-  const randomHex = crypto.randomBytes(4).toString('hex');
-  return `Edu@${randomHex}9!`;
 }
 
 export async function getStudents(req, res, next) {
@@ -215,7 +210,7 @@ export async function createStudent(req, res, next) {
 
     const orgDoc = await Organization.findById(orgId);
     const schoolName = orgDoc?.name || 'EduCore School';
-    const studentTempPassword = generateTemporaryPassword();
+    const studentTempPassword = await getDefaultPassword(orgId);
 
     const resetUrl = `${process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app'}/login?reset=true`;
 
@@ -239,7 +234,7 @@ export async function createStudent(req, res, next) {
       if (parentDoc) {
         parentId = parentDoc._id;
       } else {
-        parentTempPassword = generateTemporaryPassword();
+        parentTempPassword = await getDefaultPassword(orgId);
         const parentUser = await User.create({
           email: parentEmail,
           password: parentTempPassword,

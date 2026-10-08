@@ -1,13 +1,8 @@
-import crypto from 'node:crypto';
+import { getDefaultPassword } from './defaultPasswordService.js';
 import mongoose from 'mongoose';
 import { User, Profile, Student, Parent, ClassModel, StudentParent, Organization } from '../models/index.js';
 import { sendStudentCredentials, sendParentCredentials } from './emailService.js';
 import { saveAvatarFromBase64 } from '../utils/avatarStorage.js';
-
-function generateTemporaryPassword() {
-  const randomHex = crypto.randomBytes(4).toString('hex');
-  return `Edu@${randomHex}9!`;
-}
 
 export async function processStudentAdmission({
   actorProfile,
@@ -96,14 +91,14 @@ export async function processStudentAdmission({
       parentId = existingParent._id;
     } else {
       isNewParent = true;
-      newParentTempPassword = generateTemporaryPassword();
+      newParentTempPassword = await getDefaultPassword(organization_id);
     }
   } else {
     return { error: 'Parent information (parent object or parent_id) is required', status: 400 };
   }
 
-  // 5. Generate secure temporary password for student
-  const studentTempPassword = generateTemporaryPassword();
+  // 5. Use the school default for newly created accounts
+  const studentTempPassword = await getDefaultPassword(organization_id);
 
   // Tracking created IDs for compensating rollback if replica set transactions are unavailable
   const created = {

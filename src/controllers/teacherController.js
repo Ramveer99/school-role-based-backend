@@ -1,3 +1,4 @@
+import { getDefaultPassword } from '../services/defaultPasswordService.js';
 import mongoose from 'mongoose';
 import { orgFilter, profileHasRole } from '../middleware/auth.js';
 import { User, Profile, Teacher } from '../models/index.js';
@@ -126,7 +127,7 @@ export async function createTeacher(req, res, next) {
 
     const userId = await createAuthUser({
       email: b.email,
-      password: b.password || 'EduCore@123!',
+      password: b.password || await getDefaultPassword(organization_id),
       full_name: b.full_name,
       role: 'teacher',
       organization_id,

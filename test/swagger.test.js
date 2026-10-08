@@ -23,6 +23,8 @@ describe('Swagger Documentation Endpoints', () => {
     assert.ok(res.body.paths['/parents']);
     assert.ok(res.body.paths['/classes']);
     assert.ok(res.body.paths['/organizations']);
+    assert.ok(res.body.paths['/organizations/{id}/default-password'].get);
+    assert.ok(res.body.paths['/organizations/{id}/default-password'].put.requestBody);
     assert.ok(res.body.paths['/notices']);
   });
 

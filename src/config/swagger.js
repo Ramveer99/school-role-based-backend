@@ -801,6 +801,45 @@ Complete multi-step admission flow:
   },
 };
 
+swaggerDocument.paths['/organizations/{id}/default-password'] = {
+  get: {
+    tags: ['Organizations'], summary: 'Get the school default password (Admin or Super Admin)',
+    description: 'Admins can access their own school; super admins can access any school. A random default is initialized on first use. Response is never cached.',
+    security: [{ bearerAuth: [] }],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: {
+      200: { description: 'Current school default', content: { 'application/json': { schema: { type: 'object', properties: { organization_id: { type: 'string' }, default_password: { type: 'string' } } } } } },
+      400: { description: 'Invalid organization ID' }, 401: { description: 'Authentication required' },
+      403: { description: 'Role or organization access denied' }, 404: { description: 'Organization not found' },
+    },
+  },
+};
+swaggerDocument.paths['/organizations/{id}/default-password'].put = {
+  ...structuredClone(swaggerDocument.paths['/organizations/{id}/default-password'].get),
+  summary: 'Set the school default password (Admin or Super Admin)',
+  description: 'Applies to future account creation only. Existing account passwords are unchanged. Minimum 8 characters and maximum 72 UTF-8 bytes; blank values and bcrypt hash prefixes are rejected.',
+  requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['default_password'], properties: { default_password: { type: 'string', minLength: 8, maxLength: 72 } } }, example: { default_password: 'SchoolWelcome123!' } } } },
+};
+
+// Additive organization-scoped variants preserve the existing member contracts.
+for (const resource of ['students', 'teachers', 'parents']) {
+  for (const suffix of ['', '/{id}']) {
+    const operations = structuredClone(swaggerDocument.paths[`/${resource}${suffix}`]);
+    for (const [method, operation] of Object.entries(operations)) {
+      operation.tags = ['Organizations'];
+      operation.summary = `${method.toUpperCase()} school ${resource}${suffix ? ' member' : ''} (Super Admin only)`;
+      operation.description = 'The URL selects the school. Existing member response formats and account flows are preserved. Membership and profile links cannot be changed. DELETE removes the member record, not the login account. See docs/organization-members.md for request fields and examples.';
+      operation.parameters = [{ name: 'organizationId', in: 'path', required: true, schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' } }, ...(operation.parameters || [])];
+      operation.responses = { ...operation.responses, 400: { description: 'Invalid ID, field, or school relationship' }, 401: { description: 'Authentication required' }, 403: { description: 'Super Admin required' }, 404: { description: 'School or member not found in school' } };
+      if (method === 'post' || method === 'put') {
+        operation.requestBody = { required: true, content: { 'application/json': { schema: { type: 'object' }, example: method === 'put' ? { full_name: 'Updated Name' } : { full_name: 'New Member', email: 'member@example.com', ...(resource === 'students' ? { admission_no: 'ADM-001' } : resource === 'teachers' ? { employee_id: 'EMP-001' } : {}) } } } };
+        operation.responses[409] = { description: 'Duplicate email or school identifier' };
+      }
+    }
+    swaggerDocument.paths[`/organizations/{organizationId}/${resource}${suffix}`] = operations;
+  }
+}
+
 export function setupSwagger(app) {
   app.get('/api/docs.json', (_req, res) => {
     res.setHeader('Content-Type', 'application/json');

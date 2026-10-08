@@ -1,3 +1,4 @@
+import { getDefaultPassword } from '../services/defaultPasswordService.js';
 import mongoose from 'mongoose';
 import { profileHasRole } from '../middleware/auth.js';
 import { Organization, Student, Teacher, Parent } from '../models/index.js';
@@ -88,6 +89,7 @@ export async function createOrganization(req, res, next) {
     if (admin_email) {
       await createAuthUser({
         email: admin_email,
+        password: await getDefaultPassword(org._id),
         full_name: admin_name || admin_email,
         role: 'admin',
         organization_id: org._id,

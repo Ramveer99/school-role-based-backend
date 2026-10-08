@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { organizationPasswordAccess, readDefaultPassword, updateDefaultPassword } from '../controllers/defaultPasswordController.js';
+import organizationMembers from './organizationMembers.js';
 import {
   getOrganizations,
   getOrganizationById,
@@ -8,6 +10,11 @@ import {
 } from '../controllers/organizationController.js';
 
 const router = Router();
+
+router.use('/:organizationId', organizationMembers);
+
+router.get('/:id/default-password', organizationPasswordAccess, readDefaultPassword);
+router.put('/:id/default-password', organizationPasswordAccess, updateDefaultPassword);
 
 router.get('/', getOrganizations);
 router.get('/:id', getOrganizationById);

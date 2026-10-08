@@ -21,6 +21,7 @@ export const env = {
   port: Number(process.env.PORT || process.env.API_PORT || 8787),
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/school_dashboard',
   jwtSecret: process.env.JWT_SECRET || 'educore-dev-secret-change-me',
+  defaultPasswordEncryptionKey: process.env.DEFAULT_PASSWORD_ENCRYPTION_KEY || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || true,
   frontendUrl: process.env.FRONTEND_URL || 'https://educore-school-erp-1ha7.arcada.app',

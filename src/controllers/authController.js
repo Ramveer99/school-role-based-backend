@@ -1,3 +1,4 @@
+import { getDefaultPassword } from '../services/defaultPasswordService.js';
 import {
   loginWithEmailPassword,
   registerUser,
@@ -52,8 +53,8 @@ export async function register(req, res, next) {
     const actor = req.profile;
     const { email, password, full_name, role, organization_id, phone } = req.body || {};
 
-    if (!email || !password || !full_name || !role) {
-      return res.status(400).json({ success: false, error: 'email, password, full_name, and role required' });
+    if (!email || !full_name || !role) {
+      return res.status(400).json({ success: false, error: 'email, full_name, and role required' });
     }
 
     const allowedRoles = ['admin', 'teacher', 'student', 'parent'];
@@ -78,7 +79,7 @@ export async function register(req, res, next) {
 
     const result = await registerUser({
       email,
-      password,
+      password: password || await getDefaultPassword(orgId),
       full_name,
       role,
       organization_id: orgId,
