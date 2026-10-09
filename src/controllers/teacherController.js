@@ -112,6 +112,7 @@ export async function createTeacher(req, res, next) {
     }
 
     const normalizedEmail = String(b.email).toLowerCase().trim();
+    const explicitPassword = typeof b.password === 'string' && b.password.trim() ? b.password : '';
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(409).json({ success: false, error: `User account with email "${normalizedEmail}" already exists` });
@@ -126,8 +127,8 @@ export async function createTeacher(req, res, next) {
     }
 
     const userId = await createAuthUser({
-      email: b.email,
-      password: b.password || await getDefaultPassword(organization_id),
+      email: normalizedEmail,
+      password: explicitPassword || await getDefaultPassword(organization_id),
       full_name: b.full_name,
       role: 'teacher',
       organization_id,
