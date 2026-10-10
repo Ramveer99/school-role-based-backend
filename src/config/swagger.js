@@ -801,6 +801,29 @@ Complete multi-step admission flow:
   },
 };
 
+swaggerDocument.components.schemas.OrganizationDetails = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' }, name: { type: 'string' }, code: { type: 'string' },
+    email: { type: 'string', description: 'School contact email' },
+    admin_email: {
+      type: 'string', format: 'email', nullable: true,
+      description: 'Login email of the earliest created school admin; null when no admin is linked.',
+      example: 'admin@school.example',
+    },
+    address: { type: 'string' }, phone: { type: 'string' }, active: { type: 'boolean' },
+    stats: { type: 'object', properties: { students: { type: 'integer' }, teachers: { type: 'integer' }, parents: { type: 'integer' } } },
+  },
+};
+swaggerDocument.paths['/organizations'].get.responses[200] = {
+  description: 'Schools with member counts and admin login email',
+  content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/OrganizationDetails' } } } },
+};
+swaggerDocument.paths['/organizations/{id}'].get.responses[200] = {
+  description: 'School details with member counts and admin login email',
+  content: { 'application/json': { schema: { $ref: '#/components/schemas/OrganizationDetails' } } },
+};
+
 swaggerDocument.paths['/organizations/{id}/default-password'] = {
   get: {
     tags: ['Organizations'], summary: 'Get the school default password (Admin or Super Admin)',

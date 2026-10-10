@@ -2,7 +2,7 @@
 
 All requests use `Authorization: Bearer <token>`. Only `super_admin` can use the new member routes. The existing organization and global member endpoints retain their behavior.
 
-Start with `GET /api/organizations`, which returns schools with `stats.students`, `stats.teachers`, and `stats.parents`. `GET /api/organizations/:organizationId` returns a school and the same counts.
+Start with `GET /api/organizations`, which returns schools with `stats.students`, `stats.teachers`, and `stats.parents`. `GET /api/organizations/:organizationId` returns a school and the same counts. Both responses include `admin_email`, the linked school administrator login email (separate from the school contact `email`). It is `null` when no administrator is linked. If multiple admins exist, the earliest created admin is selected consistently.
 
 For each resource (`students`, `teachers`, `parents`):
 

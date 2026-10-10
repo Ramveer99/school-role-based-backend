@@ -1,8 +1,22 @@
 import { getDefaultPassword } from '../services/defaultPasswordService.js';
 import mongoose from 'mongoose';
 import { profileHasRole } from '../middleware/auth.js';
-import { Organization, Student, Teacher, Parent } from '../models/index.js';
+import { Organization, Student, Teacher, Parent, Profile } from '../models/index.js';
 import { createAuthUser } from '../utils/users.js';
+
+// A school may have multiple admins; use the earliest created admin consistently.
+async function getAdminEmails(organizationIds) {
+  const admins = await Profile.find({ role: 'admin', organization_id: { $in: organizationIds } })
+    .select('organization_id email user_id')
+    .populate('user_id', 'email')
+    .sort({ created_at: 1, _id: 1 });
+  const emails = new Map();
+  for (const admin of admins) {
+    const id = admin.organization_id.toString();
+    if (!emails.has(id)) emails.set(id, admin.user_id?.email || admin.email);
+  }
+  return emails;
+}
 
 export async function getOrganizations(req, res, next) {
   try {
@@ -12,6 +26,8 @@ export async function getOrganizations(req, res, next) {
 
     const orgs = await Organization.find().sort({ created_at: -1 });
 
+    const adminEmails = await getAdminEmails(orgs.map(org => org._id));
+
     const withStats = await Promise.all(
       orgs.map(async (o) => {
         const id = o._id;
@@ -20,7 +36,7 @@ export async function getOrganizations(req, res, next) {
           Teacher.countDocuments({ organization_id: id }),
           Parent.countDocuments({ organization_id: id }),
         ]);
-        return { ...o.toJSON(), stats: { students, teachers, parents } };
+        return { ...o.toJSON(), admin_email: adminEmails.get(id.toString()) || null, stats: { students, teachers, parents } };
       })
     );
 
@@ -46,14 +62,16 @@ export async function getOrganizationById(req, res, next) {
     const org = await Organization.findById(id);
     if (!org) return res.status(404).json({ success: false, error: 'Organization not found' });
 
-    const [students, teachers, parents] = await Promise.all([
+    const [students, teachers, parents, adminEmails] = await Promise.all([
       Student.countDocuments({ organization_id: id }),
       Teacher.countDocuments({ organization_id: id }),
       Parent.countDocuments({ organization_id: id }),
+      getAdminEmails([org._id]),
     ]);
 
     return res.json({
       ...org.toJSON(),
+      admin_email: adminEmails.get(org.id) || null,
       stats: { students, teachers, parents },
     });
   } catch (err) {
