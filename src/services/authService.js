@@ -21,7 +21,8 @@ export function publicUserPayload(profile) {
 }
 
 export async function loginWithEmailPassword(email, password) {
-  const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const user = await User.findOne({ email: normalizedEmail }).select('+password');
   if (!user || !(await user.comparePassword(password))) {
     return { error: 'Invalid email or password', status: 401 };
   }
