@@ -26,6 +26,10 @@ describe('Swagger Documentation Endpoints', () => {
     assert.ok(res.body.paths['/organizations/{id}/default-password'].get);
     assert.ok(res.body.paths['/organizations/{id}/default-password'].put.requestBody);
     assert.ok(res.body.paths['/notices']);
+    const ledgerBase = '/organizations/{organizationId}/ledger';
+    for (const suffix of ['', '/charges', '/payments', '/entries']) assert.ok(res.body.paths[ledgerBase + suffix].get);
+    for (const suffix of ['/charges', '/payments', '/payments/{paymentId}/allocations', '/entries/{entryId}/reverse']) assert.ok(res.body.paths[ledgerBase + suffix].post.requestBody);
+    assert.ok(res.body.components.schemas.LedgerChargeRequest);
   });
 
   test('GET /api/docs - Serves Swagger UI HTML page', async () => {

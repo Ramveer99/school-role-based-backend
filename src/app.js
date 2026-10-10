@@ -49,7 +49,7 @@ export function createApp() {
     cors({
       origin: env.corsOrigin === 'true' || env.corsOrigin === true ? true : env.corsOrigin,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
       credentials: true,
     })
   );

@@ -1,3 +1,4 @@
+import { ledgerPaths, ledgerSchemas } from './organizationLedgerSwagger.js';
 import swaggerUi from 'swagger-ui-express';
 
 export const swaggerDocument = {
@@ -862,6 +863,9 @@ for (const resource of ['students', 'teachers', 'parents']) {
     swaggerDocument.paths[`/organizations/{organizationId}/${resource}${suffix}`] = operations;
   }
 }
+
+Object.assign(swaggerDocument.components.schemas, ledgerSchemas);
+Object.assign(swaggerDocument.paths, ledgerPaths);
 
 export function setupSwagger(app) {
   app.get('/api/docs.json', (_req, res) => {
